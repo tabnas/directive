@@ -36,7 +36,7 @@ type SpecCase = { input: string; expected: string }
 
 const loadSpec = (name: string): SpecCase[] => {
   const text = fs.readFileSync(
-    path.join(__dirname, '..', 'test', 'spec', name),
+    path.join(__dirname, '..', '..', 'test', 'spec', name),
     'utf8',
   )
   const cases: SpecCase[] = []
