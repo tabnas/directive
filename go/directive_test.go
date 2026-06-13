@@ -159,6 +159,10 @@ func TestClose(t *testing.T) {
 
 	runSpec(t, j, "close-foo.tsv")
 
+	// The close token also terminates an enclosing list/map opened inside
+	// the directive (boundary closing).
+	runSpec(t, j, "close-boundary.tsv")
+
 	// A second directive sharing the same close token ">".
 	Apply(j, DirectiveOptions{
 		Name:  "bar",
@@ -273,5 +277,67 @@ func TestEdges(t *testing.T) {
 
 	if _, err := j.Parse("[@a]"); err == nil {
 		t.Fatal("expected error for [@a] with empty rules")
+	}
+}
+
+func TestResolveRulesNilEntry(t *testing.T) {
+	// A nil RuleMod entry is normalized to an empty &RuleMod{}.
+	got := resolveRules(map[string]*RuleMod{"val": nil})
+	if got["val"] == nil {
+		t.Fatal("resolveRules: nil entry was not replaced")
+	}
+}
+
+func TestCoverageExtras(t *testing.T) {
+	openCond := 0
+	closeCond := 0
+	customName := ""
+
+	j := makeMini()
+	Apply(j, DirectiveOptions{
+		Name:  "cov",
+		Open:  "cov<",
+		Close: ">",
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+			rule.Node = "COV"
+		},
+		Rules: &RulesOption{
+			// "elem" appears in both Open and Close, so the second lookup
+			// reuses the existing grammar-rule spec.
+			Open: map[string]*RuleMod{
+				"val": {C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+					openCond++
+					return true
+				}},
+				"elem": {},
+			},
+			Close: map[string]*RuleMod{
+				"list": {},
+				"elem": {C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+					closeCond++
+					return true
+				}},
+				"map":  {},
+				"pair": {},
+			},
+		},
+		Custom: func(_ *tabnas.Tabnas, cfg DirectiveConfig) {
+			customName = cfg.Name
+		},
+	})
+
+	if customName != "cov" {
+		t.Fatalf("custom callback name = %q, want %q", customName, "cov")
+	}
+
+	got, err := j.Parse("cov<[1, 2>")
+	if err != nil || got != "COV" {
+		t.Fatalf("cov<[1, 2> => %#v err=%v", got, err)
+	}
+	if openCond == 0 {
+		t.Fatal("open condition was never evaluated")
+	}
+	if closeCond == 0 {
+		t.Fatal("close condition was never evaluated")
 	}
 }

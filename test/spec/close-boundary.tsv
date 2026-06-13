@@ -1,0 +1,24 @@
+# close-boundary.tsv — boundary closing for the "foo" directive
+# (open="foo<", close=">") over the mini test grammar, with the default
+# close rules (list,elem,map,pair). The close token ">" terminates any
+# enclosing list/map opened inside the directive as well as the directive
+# itself, so an explicit container need not be closed with its own
+# bracket before ">". A bare ">" outside a directive is still an error.
+# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+
+# --- ">" closes an open list and the directive together ---
+foo<[1, 2>	"FOO"
+foo<[1, 2, 3>	"FOO"
+foo<[1>	"FOO"
+
+# --- ">" closes an open map and the directive together ---
+foo<{x:1>	"FOO"
+foo<{x:1, y:2>	"FOO"
+
+# --- trailing comma before ">" (comma-close alt) ---
+foo<[1, 2,>	"FOO"
+foo<[1,>	"FOO"
+
+# --- the close token outside any directive is unexpected ---
+[1>	!error unexpected
+{x:1>	!error unexpected

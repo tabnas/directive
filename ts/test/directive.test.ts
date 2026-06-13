@@ -99,6 +99,10 @@ describe('directive', () => {
 
     runSpec(j, 'close-foo.tsv')
 
+    // The close token also terminates an enclosing list/map opened inside
+    // the directive (boundary closing).
+    runSpec(j, 'close-boundary.tsv')
+
     // A second directive sharing the same close token ">".
     const k = j.use(Directive, {
       name: 'bar',
@@ -199,6 +203,67 @@ describe('directive', () => {
     })
     j.options({ custom: { x: 11 } })
     expect(j.parse('@y')).equal(11)
+  })
+
+
+  test('rules-object-form', () => {
+    // rules.open / rules.close given as objects (Record form) carry a
+    // per-alt `c` condition function for each modified host rule.
+    let openC = 0
+    let closeC = 0
+    const j = makeMini().use(Directive, {
+      name: 'cov',
+      open: 'cov<',
+      close: '>',
+      action: (rule: Rule) => (rule.node = 'COV'),
+      rules: {
+        open: { val: { c: () => (openC++, true) } },
+        close: {
+          list: {},
+          elem: { c: () => (closeC++, true) },
+          map: {},
+          pair: {},
+        },
+      },
+    })
+
+    expect(j.parse('cov<[1, 2>')).equal('COV')
+    assert.ok(openC > 0, 'open condition ran')
+    assert.ok(closeC > 0, 'close condition ran')
+  })
+
+
+  test('action-returns-token', () => {
+    // When the action returns a token, the close hook propagates it.
+    const j = makeMini().use(Directive, {
+      name: 'tok',
+      open: 'tok<',
+      close: '>',
+      action: (_rule: Rule, ctx: any) => ctx.t0,
+    })
+
+    // The action returns a token rather than setting rule.node, so the
+    // directive node is the empty object seeded by the open hook.
+    expect(j.parse('tok<a>')).equal({})
+  })
+
+
+  test('custom-callback', () => {
+    // The `custom` option is invoked with the resolved token config.
+    let seen: any = null
+    makeMini().use(Directive, {
+      name: 'cust',
+      open: '@@',
+      close: '>',
+      action: () => null,
+      custom: (_tabnas: any, config: any) => {
+        seen = config
+      },
+    })
+
+    assert.equal(seen?.name, 'cust')
+    assert.ok(seen?.OPEN != null, 'OPEN tin resolved')
+    assert.ok(seen?.CLOSE != null, 'CLOSE tin resolved')
   })
 
 })
