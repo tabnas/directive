@@ -2,9 +2,9 @@
 
 Directive syntax for the [tabnas](https://github.com/tabnas/parser)
 parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
-triggers custom parsing behaviour. The plugin extends the
-[jsonic](https://github.com/tabnas/jsonic) relaxed-JSON grammar, which
-runs on the tabnas engine.
+triggers custom parsing behaviour. It is a plugin for the tabnas parser
+engine — its only dependency — and layers onto whatever host grammar you
+supply (it modifies the standard `val` / `list` / `map` / `pair` rules).
 
 This repository contains:
 
@@ -31,20 +31,22 @@ Per-language usage lives in [`ts/README.md`](ts/README.md) and
 
 ## Build and test
 
-The directive's source dependencies — the `tabnas` parser engine and
-the `jsonic` relaxed-JSON grammar — are not published to a registry, so
-both implementations consume them from source. `scripts/fetch-deps.sh`
-downloads their GitHub `main` branches over HTTPS into `vendor/`
-(git-ignored) and builds the TypeScript packages. The Makefile runs it
-for you:
+The only dependency is the `tabnas` parser engine, which is not published
+to a registry, so both implementations consume it from source.
+`scripts/fetch-parser.sh` downloads its GitHub `main` branch over HTTPS
+into `vendor/` (git-ignored) and builds the TypeScript engine. The tests
+bring their own small grammar ([`ts/test/mini-grammar.ts`](ts/test/mini-grammar.ts),
+[`go/mini_grammar_test.go`](go/mini_grammar_test.go)) — just enough
+structure (scalars, explicit lists and maps) to exercise the plugin. The
+Makefile runs the fetch for you:
 
 ```bash
-make build   # fetch deps, build both implementations
-make test    # fetch deps, build + test both
+make build   # fetch engine, build both implementations
+make test    # fetch engine, build + test both
 ```
 
-Targeted: `make test-ts`, `make test-go` (each fetches deps first). Pin
-different dependency refs with `TABNAS_PARSER_REF` / `TABNAS_JSONIC_REF`.
+Targeted: `make test-ts`, `make test-go` (each fetches the engine first).
+Pin a different engine ref with `TABNAS_PARSER_REF`.
 
 Contributors and AI agents: see [`AGENTS.md`](AGENTS.md) for repository
 conventions and the parity rules.

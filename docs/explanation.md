@@ -11,17 +11,19 @@ unusual with `custom`.
 
 There are three layers:
 
-- **tabnas** — the parser engine. It ships *no* grammar: just a
-  matcher-based lexer and a rule-based parser driven by grammar specs.
-  The plugin's `Rule`, `Context`, `Tin`, `RuleSpec` and `AltSpec`
-  types are tabnas types.
-- **jsonic** — the relaxed-JSON grammar (unquoted keys, implicit
-  lists/maps, comments, …) installed onto a tabnas instance. This is
-  the parser you actually hand to the plugin.
-- **directive** — this plugin. It extends the jsonic grammar's rules
-  to recognise directive tokens. It needs those rules (`val`, `list`,
-  `map`, `pair`, `elem`) to exist, which is why it operates on a
-  jsonic instance rather than a bare engine.
+- **tabnas** — the parser engine, and the plugin's only dependency. It
+  ships *no* grammar: just a matcher-based lexer and a rule-based parser
+  driven by grammar specs. The plugin's `Rule`, `Context`, `Tin`,
+  `RuleSpec` and `AltSpec` types are tabnas types.
+- **a host grammar** — any grammar installed onto a tabnas instance that
+  defines the usual `val` / `list` / `map` / `pair` / `elem` rules. The
+  directive layers onto it. This repo's tests use a deliberately small
+  one (`ts/test/mini-grammar.ts`, `go/mini_grammar_test.go`); a
+  full relaxed-JSON grammar such as `jsonic` is another example.
+- **directive** — this plugin. It extends the host grammar's rules to
+  recognise directive tokens. It needs those rules to exist, which is why
+  it operates on an instance with a grammar installed rather than a bare
+  engine.
 
 
 ## What is a directive?
@@ -78,10 +80,11 @@ decrements, and outer rules see the close token as untagged again.
 
 ## Implicit lists and maps
 
-The grammar supports implicit containers: `1 2 3` parses as a list
-without brackets, and `a:1 b:2` as a map without braces. This
-interacts badly with an open-only directive, because once the
-directive pushes into `val` it would keep consuming siblings forever.
+Some host grammars support implicit containers: `1 2 3` parses as a list
+without brackets, and `a:1 b:2` as a map without braces. (The small test
+grammar here does not, but a relaxed-JSON grammar does.) This interacts
+badly with an open-only directive, because once the directive pushes into
+`val` it would keep consuming siblings forever.
 
 The plugin guards against this with two counters:
 

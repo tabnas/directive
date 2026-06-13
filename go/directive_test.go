@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	jsonic "github.com/jsonicjs/jsonic/go"
+	tabnas "github.com/tabnas/parser/go"
 )
 
 // --- TSV spec loader ---
@@ -59,10 +59,8 @@ func loadSpec(t *testing.T, name string) []specCase {
 	return cases
 }
 
-// numberToFloat64 recursively converts json.Number values to float64 so
-// a parsed spec tree deep-equals a jsonic-parsed tree (which uses float64
-// for all numbers). Not needed for encoding/json's default behavior, but
-// kept here for clarity — jsonic also returns float64 for numbers.
+// normalizeSpec recurses through the expected tree; numbers from
+// encoding/json are float64, matching the parser's number representation.
 func normalizeSpec(v any) any {
 	switch x := v.(type) {
 	case map[string]any:
@@ -81,7 +79,7 @@ func normalizeSpec(v any) any {
 	return v
 }
 
-func runSpec(t *testing.T, j *jsonic.Jsonic, name string) {
+func runSpec(t *testing.T, j *tabnas.Tabnas, name string) {
 	t.Helper()
 	cases := loadSpec(t, name)
 	for _, c := range cases {
@@ -122,7 +120,7 @@ func runSpec(t *testing.T, j *jsonic.Jsonic, name string) {
 	}
 }
 
-// mustPanic asserts that fn panics. Used for duplicate-open-token tests.
+// mustPanic asserts that fn panics. Used for the duplicate-open-token test.
 func mustPanic(t *testing.T, fn func()) {
 	t.Helper()
 	defer func() {
@@ -133,14 +131,14 @@ func mustPanic(t *testing.T, fn func()) {
 	fn()
 }
 
-// --- tests ---
+// --- tests (mirroring ts/test/directive.test.ts) ---
 
 func TestHappy(t *testing.T) {
-	j := jsonic.Make()
+	j := makeMini()
 	Apply(j, DirectiveOptions{
 		Name: "upper",
 		Open: "@",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
 			rule.Node = strings.ToUpper(fmt.Sprintf("%v", rule.Child.Node))
 		},
 	})
@@ -149,72 +147,56 @@ func TestHappy(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	j := jsonic.Make()
+	j := makeMini()
 	Apply(j, DirectiveOptions{
 		Name:  "foo",
 		Open:  "foo<",
 		Close: ">",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
 			rule.Node = "FOO"
 		},
 	})
 
 	runSpec(t, j, "close-foo.tsv")
 
-	// Register a second directive sharing the same close token.
+	// A second directive sharing the same close token ">".
 	Apply(j, DirectiveOptions{
 		Name:  "bar",
 		Open:  "bar<",
 		Close: ">",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
 			rule.Node = "BAR"
 		},
 	})
 
 	runSpec(t, j, "close-foo-bar.tsv")
 
-	// Duplicate open token should panic.
+	// Re-registering the same open token must panic.
 	mustPanic(t, func() {
 		Apply(j, DirectiveOptions{
 			Name:   "baz",
 			Open:   "bar<",
-			Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {},
+			Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
 		})
 	})
 }
 
 func TestAdder(t *testing.T) {
-	j := jsonic.Make()
+	j := makeMini()
 	Apply(j, DirectiveOptions{
 		Name:  "adder",
 		Open:  "add<",
 		Close: ">",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
-			if arr, ok := rule.Child.Node.([]any); ok && len(arr) > 0 {
-				// If any element is a string, concatenate; otherwise sum.
-				allNum := true
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+			out := float64(0)
+			if arr, ok := rule.Child.Node.([]any); ok {
 				for _, v := range arr {
-					if _, ok := v.(float64); !ok {
-						allNum = false
-						break
+					if n, ok := v.(float64); ok {
+						out += n
 					}
 				}
-				if allNum {
-					var out float64
-					for _, v := range arr {
-						out += v.(float64)
-					}
-					rule.Node = out
-					return
-				}
-				var out string
-				for _, v := range arr {
-					out += fmt.Sprintf("%v", v)
-				}
-				rule.Node = out
-				return
 			}
-			rule.Node = float64(0)
+			rule.Node = out
 		},
 	})
 
@@ -224,60 +206,43 @@ func TestAdder(t *testing.T) {
 		Name:  "multiplier",
 		Open:  "mul<",
 		Close: ">",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+			out := float64(0)
 			if arr, ok := rule.Child.Node.([]any); ok && len(arr) > 0 {
-				out := 1.0
+				out = 1
 				for _, v := range arr {
 					if n, ok := v.(float64); ok {
 						out *= n
 					}
 				}
-				rule.Node = out
-				return
 			}
-			rule.Node = float64(0)
+			rule.Node = out
 		},
 	})
 
 	runSpec(t, j, "multiplier.tsv")
 
-	// Adder still works after second registration.
+	// Adder still works after the second registration.
 	runSpec(t, j, "adder.tsv")
-}
-
-func TestEdges(t *testing.T) {
-	j := jsonic.Make()
-	Apply(j, DirectiveOptions{
-		Name:   "none",
-		Open:   "@",
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {},
-		Rules:  &RulesOption{}, // Empty rules: no existing rules modified.
-	})
-
-	_, err := j.Parse("a:@x")
-	if err == nil {
-		t.Fatal("expected error for a:@x with empty rules")
-	}
 }
 
 func TestInject(t *testing.T) {
 	src := map[string]any{
-		"a":  "A",
-		"b":  map[string]any{"b": float64(1)},
-		"bb": map[string]any{"bb": float64(1)},
-		"c":  []any{float64(2), float64(3)},
+		"a": "A",
+		"b": map[string]any{"b": float64(1)},
+		"c": []any{float64(2), float64(3)},
 	}
 
-	j := jsonic.Make()
+	j := makeMini()
 	Apply(j, DirectiveOptions{
 		Name: "inject",
 		Open: "@",
 		Rules: &RulesOption{
 			Open: map[string]*RuleMod{"val": {}, "pair": {}},
 		},
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
-			srcname := fmt.Sprintf("%v", rule.Child.Node)
-			val := src[srcname]
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+			key := fmt.Sprintf("%v", rule.Child.Node)
+			val := src[key] // missing key → nil
 			if rule.Parent != nil && rule.Parent.Name == "pair" {
 				if m, ok := rule.Parent.Node.(map[string]any); ok {
 					if sm, ok := val.(map[string]any); ok {
@@ -290,166 +255,23 @@ func TestInject(t *testing.T) {
 			}
 			rule.Node = val
 		},
-		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
-			OPEN := cfg.OPEN
-			name := cfg.Name
-			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependOpen(&jsonic.AltSpec{
-					S: [][]jsonic.Tin{{OPEN}},
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.D == 0
-					},
-					P: "map",
-					B: 1,
-					N: map[string]int{name + "_top": 1},
-				})
-			})
-			j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependOpen(&jsonic.AltSpec{
-					S: [][]jsonic.Tin{{OPEN}},
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.D == 1 && r.N[name+"_top"] == 1
-					},
-					P: "pair",
-					B: 1,
-				})
-			})
-		},
 	})
 
 	runSpec(t, j, "inject.tsv")
 }
 
-func TestAnnotate(t *testing.T) {
-	j := jsonic.Make()
+func TestEdges(t *testing.T) {
+	// An explicit empty RulesOption modifies no host rules, so the open
+	// token is unrecognised.
+	j := makeMini()
 	Apply(j, DirectiveOptions{
-		Name:  "annotate",
-		Open:  "@",
-		Rules: &RulesOption{Open: map[string]*RuleMod{"val": {}}},
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
-			rule.Parent.U["note"] = "<" + fmt.Sprintf("%v", rule.Child.Node) + ">"
-		},
-		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
-			name := cfg.Name
-			j.Rule(name, func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependClose(&jsonic.AltSpec{
-					R: "val",
-					G: "replace",
-				})
-				rs.AddAC(func(rule *jsonic.Rule, ctx *jsonic.Context) {
-					if rule.Parent != nil && rule.Parent != jsonic.NoRule &&
-						rule.Next != nil && rule.Next != jsonic.NoRule {
-						rule.Parent.Child = rule.Next
-					}
-				})
-			})
-			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.AddBC(func(r *jsonic.Rule, ctx *jsonic.Context) {
-					if note, ok := r.U["note"]; ok && note != nil {
-						if m, ok := r.Node.(map[string]any); ok {
-							m["@"] = note
-						}
-					}
-				})
-			})
-		},
+		Name:   "none",
+		Open:   "@",
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
+		Rules:  &RulesOption{},
 	})
 
-	runSpec(t, j, "annotate.tsv")
-}
-
-func TestSubobj(t *testing.T) {
-	j := jsonic.Make()
-	Apply(j, DirectiveOptions{
-		Name: "subobj",
-		Open: "@",
-		Rules: &RulesOption{
-			Open: map[string]*RuleMod{
-				"val": {},
-				"pair": {
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.Lte("pk", 0)
-					},
-				},
-			},
-		},
-		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
-			key := fmt.Sprintf("%v", rule.Child.Node)
-			val := strings.ToUpper(key)
-			res := map[string]any{key: val}
-
-			// Merge into grandparent node if it's a map.
-			if rule.Parent != nil && rule.Parent != jsonic.NoRule &&
-				rule.Parent.Parent != nil && rule.Parent.Parent != jsonic.NoRule {
-				if m, ok := rule.Parent.Parent.Node.(map[string]any); ok {
-					for k, v := range res {
-						m[k] = v
-					}
-					return
-				}
-			}
-			rule.Node = res
-		},
-		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
-			OPEN := cfg.OPEN
-			name := cfg.Name
-
-			// Handle @foo at top level: assume a map.
-			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependOpen(
-					&jsonic.AltSpec{
-						S: [][]jsonic.Tin{{OPEN}},
-						C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-							return r.N["pk"] > 0
-						},
-						B: 1,
-						G: name + "-undive",
-					},
-					&jsonic.AltSpec{
-						S: [][]jsonic.Tin{{OPEN}},
-						C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-							return r.D == 0
-						},
-						P: "map",
-						B: 1,
-						N: map[string]int{name + "_top": 1},
-						G: name + "-top",
-					},
-				)
-			})
-
-			j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependOpen(&jsonic.AltSpec{
-					S: [][]jsonic.Tin{{OPEN}},
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.D == 1 && r.N[name+"_top"] == 1
-					},
-					P: "pair",
-					B: 1,
-					G: name + "-top",
-				})
-				rs.PrependClose(&jsonic.AltSpec{
-					S: [][]jsonic.Tin{{OPEN}},
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.N["pk"] > 0
-					},
-					B: 1,
-					G: name + "-undive",
-				})
-			})
-
-			j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-				rs.PrependClose(&jsonic.AltSpec{
-					S: [][]jsonic.Tin{{OPEN}},
-					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
-						return r.N["pk"] > 0
-					},
-					B: 1,
-					G: name + "-undive",
-				})
-			})
-		},
-	})
-
-	runSpec(t, j, "subobj.tsv")
+	if _, err := j.Parse("[@a]"); err == nil {
+		t.Fatal("expected error for [@a] with empty rules")
+	}
 }

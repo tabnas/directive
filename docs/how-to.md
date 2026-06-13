@@ -4,10 +4,12 @@ Practical recipes for common problems. Each guide assumes you have
 already followed the [Tutorial](tutorial.md) and know how to register
 a basic directive.
 
-The Go examples use the two import aliases from the tutorial: `jsonic`
-(the relaxed-JSON grammar, and the `Rule`/`Context`/`AltSpec`/… types,
-`github.com/jsonicjs/jsonic/go`) and `directive`
-(`github.com/tabnas/directive/go`).
+The examples assume a parser `j` that already has a host grammar
+installed (`new Tabnas().use(hostGrammar)` in TS, `tabnas.Make()` +
+`j.Use(hostGrammar)` in Go — see the [Tutorial](tutorial.md)). The Go
+examples use two import aliases: `tabnas` (the engine, and the
+`Rule`/`Context`/`AltSpec`/… types, `github.com/tabnas/parser/go`) and
+`directive` (`github.com/tabnas/directive/go`).
 
 
 ## How to add a close token
@@ -18,7 +20,7 @@ consuming a single value.
 **TypeScript:**
 
 ```ts
-Jsonic.make().use(Directive, {
+new Tabnas().use(hostGrammar).use(Directive, {
   name: 'group',
   open: '(',
   close: ')',
@@ -33,7 +35,7 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:  "group",
     Open:  "(",
     Close: ")",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
         r.Node = r.Child.Node
     },
 })
@@ -48,7 +50,7 @@ reuses the existing fixed token rather than creating a duplicate.
 **TypeScript:**
 
 ```ts
-const j = Jsonic.make()
+const j = new Tabnas().use(hostGrammar)
   .use(Directive, { name: 'foo', open: 'foo<', close: '>', action: fooAction })
   .use(Directive, { name: 'bar', open: 'bar<', close: '>', action: barAction })
 ```
@@ -72,7 +74,7 @@ rules should detect the directive's open token.
 **TypeScript:** only recognise `@x` as a list element:
 
 ```ts
-Jsonic.make().use(Directive, {
+new Tabnas().use(hostGrammar).use(Directive, {
   name: 'elem-only',
   open: '@',
   rules: { open: 'elem' },
@@ -119,7 +121,7 @@ rules: {
 Rules: &directive.RulesOption{
     Open: map[string]*directive.RuleMod{
         "val":  {},
-        "pair": {C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.Lte("pk", 0) }},
+        "pair": {C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.Lte("pk", 0) }},
     },
 },
 ```
@@ -128,18 +130,18 @@ Rules: &directive.RulesOption{
 ## How to read a value from parser options
 
 In TypeScript the `action` field also accepts a dotted-path string.
-The plugin looks up that path on `jsonic.options` every time the
+The plugin looks up that path on the instance options every time the
 directive fires.
 
 ```ts
-const j = Jsonic.make().use(Directive, {
+const j = new Tabnas().use(hostGrammar).use(Directive, {
   name: 'constant',
   open: '@',
   action: 'custom.x',
 })
 j.options({ custom: { x: 42 } })
 
-j('@')     // → 42
+j.parse('@x')   // → 42  (the action ignores the body and returns custom.x)
 ```
 
 Go's `Action` is a typed function, so it has no string form. Write a
@@ -150,7 +152,7 @@ x := 42
 directive.Apply(j, directive.DirectiveOptions{
     Name: "constant",
     Open: "@",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) { r.Node = x },
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
 })
 ```
 
@@ -166,12 +168,12 @@ the plugin has finished wiring up. You receive the resolved
 **TypeScript:**
 
 ```ts
-Jsonic.make().use(Directive, {
+new Tabnas().use(hostGrammar).use(Directive, {
   name: 'subobj',
   open: '@',
   action: /* … */,
-  custom: (jsonic, { OPEN, name }) => {
-    jsonic.rule('val', (rs) => {
+  custom: (am, { OPEN, name }) => {
+    am.rule('val', (rs) => {
       rs.open({
         s: [OPEN],
         c: (r) => 0 === r.d,
@@ -192,11 +194,11 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:   "subobj",
     Open:   "@",
     Action: /* … */,
-    Custom: func(j *jsonic.Jsonic, cfg directive.DirectiveConfig) {
-        j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-            rs.PrependOpen(&jsonic.AltSpec{
-                S: [][]jsonic.Tin{{cfg.OPEN}},
-                C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
+    Custom: func(j *tabnas.Tabnas, cfg directive.DirectiveConfig) {
+        j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+            rs.PrependOpen(&tabnas.AltSpec{
+                S: [][]tabnas.Tin{{cfg.OPEN}},
+                C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.D == 0 },
                 P: "map",
                 B: 1,
                 N: map[string]int{cfg.Name + "_top": 1},
@@ -250,7 +252,7 @@ defaults" instead).
 directive.Apply(j, directive.DirectiveOptions{
     Name:   "none",
     Open:   "@",
-    Action: func(*jsonic.Rule, *jsonic.Context) {},
+    Action: func(*tabnas.Rule, *tabnas.Context) {},
     Rules:  &directive.RulesOption{},
 })
 ```

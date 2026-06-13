@@ -10,9 +10,9 @@ A directive-syntax plugin for the
 [`tabnas`](https://github.com/tabnas/parser) parser. A *directive* is a
 token sequence — `@name` (open-only) or `add<1,2>` (open + close) — that
 pushes into a dedicated rule and fires an action to transform the parsed
-body. The plugin extends the
-[`jsonic`](https://github.com/tabnas/jsonic) relaxed-JSON grammar; it is
-not a parser of its own.
+body. It is a plugin for the tabnas parser engine and layers onto
+whatever host grammar provides the standard `val` / `list` / `map` /
+`pair` / `elem` rules; it is not a parser of its own.
 
 ## Layout
 
@@ -22,51 +22,50 @@ not a parser of its own.
 | `go/` | Go implementation (`github.com/tabnas/directive/go`). Tracks `ts/`. |
 | `docs/` | Cross-language documentation (tutorial, how-to, reference, explanation). |
 | `test/spec/*.tsv` | Shared conformance fixtures, run by both implementations. |
-| `scripts/fetch-deps.sh` | Downloads + builds the source dependencies into `vendor/`. |
-| `vendor/` | The fetched dependencies (git-ignored; created by the script). |
+| `ts/test/mini-grammar.ts`, `go/mini_grammar_test.go` | The small host grammar the tests run against. |
+| `scripts/fetch-parser.sh` | Downloads + builds the tabnas engine into `vendor/`. |
+| `vendor/` | The fetched engine (git-ignored; created by the script). |
 | `.github/workflows/build.yml` | CI: builds and tests both implementations. |
 
-## The source dependencies
+## The dependency
 
-The directive extends the **jsonic** relaxed-JSON grammar (unquoted keys,
-implicit lists/maps, …) — it needs the grammar rules (`val`, `map`,
-`pair`, `list`, `elem`) to exist, and it imports its plugin API types
-(`Rule`, `Context`, `Tin`, `RuleSpec`, `AltSpec`, …) from the same
-package. So `jsonic` is the one package the source is written against, in
-both languages:
+The **only** dependency is the **tabnas** parser engine (npm `tabnas`,
+Go module `github.com/tabnas/parser/go`). The plugin source is written
+against it: it imports the plugin API types (`Rule`, `Context`, `Tin`,
+`Plugin`, `RuleSpec`, `AltSpec`, …) and registers tokens, rules and a
+declarative grammar spec via the instance API.
 
-- TypeScript: npm `jsonic` (`vendor/tabnas-jsonic/ts`) — a thin grammar
-  layer on the `tabnas` engine. The source imports `Jsonic`, `Rule`,
-  `Plugin`, … from `jsonic`, and `jsonic` is the peer dependency.
-- Go: module `github.com/jsonicjs/jsonic/go` (`vendor/tabnas-jsonic/go`)
-  — currently a self-contained parser that bundles the engine. The
-  source imports `jsonic.Jsonic`, `jsonic.Rule`, … and a `go.mod`
-  `replace` points the require at the vendored copy.
+- TypeScript: `import { Tabnas, Rule, Plugin, … } from 'tabnas'`;
+  `tabnas` is the peer dependency (`vendor/tabnas-parser/ts`).
+- Go: `import tabnas "github.com/tabnas/parser/go"`; a `go.mod` `replace`
+  points the require at `vendor/tabnas-parser/go`.
 
-The **tabnas** parser engine (npm `tabnas`, Go module
-`github.com/tabnas/parser/go`) is a *transitive* dependency: the
-TypeScript `jsonic` layer is built on it, so the engine is fetched into
-`vendor/tabnas-parser` to build jsonic-TS. The Go `jsonic` module vendors
-its own engine, so the Go build never references `tabnas` directly.
+The engine ships **no grammar** of its own (the directive modifies host
+grammar rules), so the **tests bring their own**: a deliberately small
+grammar (scalars, explicit lists `[a, b]`, explicit maps `{k: v}`) in
+`ts/test/mini-grammar.ts` and `go/mini_grammar_test.go`. It is *not* a
+JSON/jsonic grammar — just enough structure to exercise the plugin. Its
+rule names (`val`, `list`, `map`, `pair`, `elem`) match the directive's
+default rule targets. **Keep the two mini grammars in step.**
 
-Neither package is published to a registry, so both are consumed from
-source via `scripts/fetch-deps.sh`, which downloads their GitHub `main`
-branches into `vendor/` (git-ignored). Pin refs with `TABNAS_PARSER_REF`
-/ `TABNAS_JSONIC_REF`; set `TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch.
-Always fetch before installing/building; the Makefile, CI, and the
-SessionStart hook do this automatically.
+The engine is not published to a registry, so it is consumed from source
+via `scripts/fetch-parser.sh`, which downloads its GitHub `main` branch
+into `vendor/` (git-ignored). Pin a ref with `TABNAS_PARSER_REF`; set
+`TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch. Always fetch before
+installing/building; the Makefile, CI, and the SessionStart hook do this
+automatically.
 
 ## Build and test
 
 From the repository root:
 
 ```bash
-make build   # fetch deps, build both implementations
-make test    # fetch deps, build + test both
+make build   # fetch engine, build both implementations
+make test    # fetch engine, build + test both
 ```
 
-Targeted: `make test-ts`, `make test-go` (each fetches deps first). Both
-currently pass: TS via Node's test runner, Go via `go test ./...`.
+Targeted: `make test-ts`, `make test-go` (each fetches the engine first).
+Both currently pass: TS via Node's test runner, Go via `go test ./...`.
 
 ## The parity rule
 
@@ -99,12 +98,12 @@ in sync when behaviour changes. Notable items:
 - Tests mirror each other: `ts/test/directive.test.ts`,
   `go/directive_test.go`, both driven by `test/spec/*.tsv`.
 - Go: run `gofmt` and `go vet ./...` before committing.
-- The directive operates on a *jsonic* instance, not a bare engine —
-  examples and tests start from `Jsonic.make()` (TS) / `jsonic.Make()`
-  (Go).
-- Plugin registration follows the standard jsonic shape. TypeScript:
+- The directive needs a host grammar with `val` / `list` / `map` /
+  `pair` rules — examples and tests start from `makeMini()`, which builds
+  a `Tabnas` instance with the small test grammar installed.
+- Plugin registration follows the standard tabnas shape. TypeScript:
   `Directive` is a `Plugin` with `Directive.defaults`, registered via
-  `j.use(Directive, options)`. Go: `Directive` is a `jsonic.Plugin`
+  `j.use(Directive, options)`. Go: `Directive` is a `tabnas.Plugin`
   value that reads named keys from the option map; `Apply(j, opts)` is
   the typed convenience constructor that forwards them to `j.Use`.
 

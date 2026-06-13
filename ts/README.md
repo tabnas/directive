@@ -2,10 +2,10 @@
 
 Adds directive syntax to the [tabnas](https://github.com/tabnas/parser)
 parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
-triggers custom parsing behaviour. The plugin extends the
-[jsonic](https://github.com/tabnas/jsonic) relaxed-JSON grammar.
-TypeScript (canonical) and Go ports share the same API shape and test
-specs.
+triggers custom parsing behaviour. It is a plugin for the tabnas engine —
+its only dependency — and layers onto whatever host grammar provides the
+standard `val` / `list` / `map` / `pair` rules. TypeScript (canonical)
+and Go ports share the same API shape and test specs.
 
 [![npm version](https://img.shields.io/npm/v/@tabnas/directive.svg)](https://npmjs.com/package/@tabnas/directive)
 [![build](https://github.com/tabnas/directive/actions/workflows/build.yml/badge.svg)](https://github.com/tabnas/directive/actions/workflows/build.yml)
@@ -21,19 +21,23 @@ of how the plugin works.
 
 ## Quickstart
 
+The directive modifies host-grammar rules, so apply it to a `Tabnas`
+instance that already has a grammar (here `hostGrammar`, which provides
+`val` / `list` / `map` / `pair`).
+
 ### TypeScript
 
 ```ts
-import { Jsonic } from 'jsonic'
+import { Tabnas } from 'tabnas'
 import { Directive } from '@tabnas/directive'
 
-const j = Jsonic.make().use(Directive, {
+const j = new Tabnas().use(hostGrammar).use(Directive, {
   name: 'upper',
   open: '@',
   action: (rule) => (rule.node = String(rule.child.node).toUpperCase()),
 })
 
-j('[@a, @b, 1]') // → ['A', 'B', 1]
+j.parse('[@a, @b, 1]') // → ['A', 'B', 1]
 ```
 
 ### Go
@@ -43,15 +47,16 @@ import (
     "fmt"
     "strings"
 
-    jsonic "github.com/jsonicjs/jsonic/go"
+    tabnas "github.com/tabnas/parser/go"
     directive "github.com/tabnas/directive/go"
 )
 
-j := jsonic.Make()
+j := tabnas.Make()
+j.Use(hostGrammar) // provides val / list / map / pair
 directive.Apply(j, directive.DirectiveOptions{
     Name: "upper",
     Open: "@",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
         r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
     },
 })
@@ -59,13 +64,17 @@ directive.Apply(j, directive.DirectiveOptions{
 j.Parse("[@a, @b, 1]") // → []any{"A", "B", float64(1)}
 ```
 
+A minimal host grammar (used by the tests) lives in
+[`test/mini-grammar.ts`](test/mini-grammar.ts).
+
 
 ## Build and test
 
-The `tabnas` engine and `jsonic` grammar are consumed from source. From
-the repository root, `make build` / `make test` fetch them into
-`vendor/` and build/test both implementations. See the
-[root README](../README.md) and [`../AGENTS.md`](../AGENTS.md).
+The `tabnas` engine is the only dependency and is consumed from source.
+From the repository root, `make build` / `make test` fetch it into
+`vendor/` and build/test both implementations. The tests bring their own
+small grammar. See the [root README](../README.md) and
+[`../AGENTS.md`](../AGENTS.md).
 
 
 ## License

@@ -37,11 +37,10 @@
   ],
   "devDependencies": {
     "@types/node": "25.6.0",
-    "jsonic": "file:../vendor/tabnas-jsonic/ts",
     "tabnas": "file:../vendor/tabnas-parser/ts",
     "typescript": "6.0.3"
   },
   "peerDependencies": {
-    "jsonic": "*"
+    "tabnas": "*"
   }
 }

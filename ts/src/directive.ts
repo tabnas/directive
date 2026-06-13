@@ -1,7 +1,7 @@
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
 import {
-  Jsonic,
+  Tabnas,
   Rule,
   RuleSpec,
   StateAction,
@@ -9,7 +9,7 @@ import {
   Context,
   Token,
   Tin,
-} from 'jsonic'
+} from 'tabnas'
 
 
 type DirectiveOptions = {
@@ -22,7 +22,7 @@ type DirectiveOptions = {
     close?: string | string[] | Record<string, { c?: Function }>
   }
   custom?: (
-    jsonic: Jsonic,
+    tabnas: Tabnas,
     config: { OPEN: Tin; CLOSE: Tin | null | undefined; name: string },
   ) => void
 }
@@ -49,7 +49,7 @@ const resolveRules = (
 }
 
 
-const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
+const Directive: Plugin = (tabnas: Tabnas, options: DirectiveOptions) => {
   let rules = {
     open: resolveRules(options?.rules?.open),
     close: resolveRules(options?.rules?.close),
@@ -64,7 +64,7 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
   if ('string' === typeof options.action) {
     let path = options.action
     action = (rule: Rule) =>
-      (rule.node = jsonic.util.prop(jsonic.options, path))
+      (rule.node = tabnas.util.prop(tabnas.options, path))
   } else {
     action = options.action
   }
@@ -74,8 +74,8 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
   let openTN = '#OD_' + name
   let closeTN = '#CD_' + name
 
-  let OPEN: Tin = jsonic.fixed(open) as Tin
-  let CLOSE = null == close ? null : jsonic.fixed(close)
+  let OPEN: Tin = tabnas.fixed(open) as Tin
+  let CLOSE = null == close ? null : tabnas.fixed(close)
 
   // OPEN must be unique
   if (null != OPEN) {
@@ -89,7 +89,7 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
     token[closeTN] = close
   }
 
-  jsonic.options({
+  tabnas.options({
     fixed: {
       token,
     },
@@ -118,9 +118,9 @@ appear without the start characters "{open}" appearing first:
     },
   })
 
-  let CA = jsonic.token.CA
-  OPEN = jsonic.fixed(open) as Tin
-  CLOSE = null == close ? null : jsonic.fixed(close)
+  let CA = tabnas.token.CA
+  OPEN = tabnas.fixed(open) as Tin
+  CLOSE = null == close ? null : tabnas.fixed(close)
 
   // NOTE: RuleSpec.open|close refers to Rule state, whereas
   // OPEN|CLOSE refers to opening and closing tokens for the directive.
@@ -128,7 +128,7 @@ appear without the start characters "{open}" appearing first:
   // Pre-seed the directive rule's hooks (clear existing alts, set bo/bc).
   // `grammar()` below will then install the open/close alts with the
   // `directive` group tag appended via the setting arg.
-  jsonic.rule(name, (rs) =>
+  tabnas.rule(name, (rs) =>
     rs
       .clear()
       .bo((rule: Rule) => ((rule.node = {}), undefined))
@@ -222,10 +222,10 @@ appear without the start characters "{open}" appearing first:
     dr.close = [{ s: [CLOSE] }, { s: [CA, CLOSE] }]
   }
 
-  jsonic.grammar(grammarSpec, { rule: { alt: { g: 'directive' } } })
+  tabnas.grammar(grammarSpec, { rule: { alt: { g: 'directive' } } })
 
   if (custom) {
-    custom(jsonic, { OPEN, CLOSE, name })
+    custom(tabnas, { OPEN, CLOSE, name })
   }
 }
 

@@ -1,120 +1,41 @@
-# happy.tsv — tests the "upper" directive (open="@", no close)
+# happy.tsv — the "upper" directive (open="@", no close) over the mini
+# test grammar (scalars, explicit lists [..], explicit maps {k:v}).
 # Action: @<word> → uppercased value (e.g. @a → "A").
 # Format: <input>\t<expected-json>    or    <input>\t!error <regex>
-# Lines starting with # and blank lines are ignored.
 
 # --- single value ---
 @a	"A"
 @abc	"ABC"
 
-# --- explicit lists (comma-separated) ---
-[]	[]
-[1]	[1]
-[1, 2]	[1, 2]
-[1, 2, 3]	[1, 2, 3]
+# --- in explicit lists ---
 [@a]	["A"]
-[1, @a]	[1, "A"]
-[1, 2, @a]	[1, 2, "A"]
-[1, @a, 2]	[1, "A", 2]
-[@a, 2]	["A", 2]
-[@a, 2, 1]	["A", 2, 1]
 [@a, @b]	["A", "B"]
 [@a, @b, @c]	["A", "B", "C"]
-[1, @a, @b]	[1, "A", "B"]
-[1, @a, 2, @b]	[1, "A", 2, "B"]
-[1, @a, 2, @b, 3]	[1, "A", 2, "B", 3]
+[1, @a]	[1, "A"]
+[@a, 2]	["A", 2]
+[1, @a, 2]	[1, "A", 2]
+[1, @a, @b, 2]	[1, "A", "B", 2]
 
-# --- explicit lists (space-separated) ---
-[1 2]	[1, 2]
-[1 2 3]	[1, 2, 3]
-[1 @a]	[1, "A"]
-[1 2 @a]	[1, 2, "A"]
-[1 @a 2]	[1, "A", 2]
-[@a 2]	["A", 2]
-[@a 2 1]	["A", 2, 1]
-[@a @b]	["A", "B"]
-[@a @b @c]	["A", "B", "C"]
-[1 @a @b]	[1, "A", "B"]
-[1 @a 2 @b]	[1, "A", 2, "B"]
-[1 @a 2 @b 3]	[1, "A", 2, "B", 3]
-
-# --- explicit maps (comma-separated) ---
-{}	{}
-{x:1}	{"x": 1}
-{x:1, y:2}	{"x": 1, "y": 2}
-{x:1, y:2, z:3}	{"x": 1, "y": 2, "z": 3}
+# --- in explicit maps ---
 {x:@a}	{"x": "A"}
-{y:1, x:@a}	{"y": 1, "x": "A"}
-{y:1, z: 2, x:@a}	{"y": 1, "z": 2, "x": "A"}
-{y:1, x:@a, z:2}	{"y": 1, "x": "A", "z": 2}
-{x:@a, y:1, z: 2}	{"x": "A", "y": 1, "z": 2}
-{x:@a, z:2}	{"x": "A", "z": 2}
+{x:@a, y:1}	{"x": "A", "y": 1}
+{x:1, y:@a}	{"x": 1, "y": "A"}
 {x:@a, y:@b}	{"x": "A", "y": "B"}
-{a:1, x:@a, y:@b}	{"a": 1, "x": "A", "y": "B"}
 {a:1, x:@a, b:2, y:@b}	{"a": 1, "x": "A", "b": 2, "y": "B"}
-{a:1, x:@a, b:2, y:@b, c: 3}	{"a": 1, "x": "A", "b": 2, "y": "B", "c": 3}
 
-# --- explicit maps (space-separated) ---
-{x:1 y:2}	{"x": 1, "y": 2}
-{x:1 y:2 z:3}	{"x": 1, "y": 2, "z": 3}
-{y:1 x:@a}	{"y": 1, "x": "A"}
-{y:1 z: 2 x:@a}	{"y": 1, "z": 2, "x": "A"}
-{y:1 x:@a z:2}	{"y": 1, "x": "A", "z": 2}
-{x:@a y:1 z: 2}	{"x": "A", "y": 1, "z": 2}
-{x:@a z:2}	{"x": "A", "z": 2}
-{x:@a y:@b}	{"x": "A", "y": "B"}
-{a:1 x:@a y:@b}	{"a": 1, "x": "A", "y": "B"}
-{a:1 x:@a b:2 y:@b}	{"a": 1, "x": "A", "b": 2, "y": "B"}
-{a:1 x:@a b:2 y:@b c: 3}	{"a": 1, "x": "A", "b": 2, "y": "B", "c": 3}
-
-# --- implicit lists (no brackets, comma-separated) ---
-1, @a	[1, "A"]
-1, 2, @a	[1, 2, "A"]
-@a, 1	["A", 1]
-@a, 1, 2	["A", 1, 2]
-1, @a, 2	[1, "A", 2]
-
-# --- implicit lists (no brackets, space-separated) ---
-1 @a	[1, "A"]
-1 2 @a	[1, 2, "A"]
-@a 1	["A", 1]
-@a 1 2	["A", 1, 2]
-1 @a 2	[1, "A", 2]
-
-# --- multiple directives in implicit lists ---
-1, @a, @b	[1, "A", "B"]
-1, 2, @a, @b	[1, 2, "A", "B"]
-@a, @b, 1	["A", "B", 1]
-@a, @b, 1, 2	["A", "B", 1, 2]
-1, @a, @b, 2	[1, "A", "B", 2]
-1 @a @b	[1, "A", "B"]
-1 2 @a @b	[1, 2, "A", "B"]
-@a @b 1	["A", "B", 1]
-@a @b 1 2	["A", "B", 1, 2]
-1 @a @b 2	[1, "A", "B", 2]
-
-# --- edge cases ---
-# nested lists with directives
-[[@a]]	[["A"]]
-[[@a], [@b]]	[["A"], ["B"]]
-[[@a, 1], [2, @b]]	[["A", 1], [2, "B"]]
-# nested map-in-list
+# --- nesting ---
 [{x:@a}]	[{"x": "A"}]
-[{x:@a, y:@b}]	[{"x": "A", "y": "B"}]
-# map-in-map
+[{x:@a}, {y:@b}]	[{"x": "A"}, {"y": "B"}]
 {m:{x:@a}}	{"m": {"x": "A"}}
 {m:{x:@a, y:@b}, z:@c}	{"m": {"x": "A", "y": "B"}, "z": "C"}
-# negative numbers & bools mixed with directives
-[-1, @a, true, @b, false]	[-1, "A", true, "B", false]
-# null mixed in
-[null, @a]	[null, "A"]
-# directive as sole pair value
-{k:@z}	{"k": "Z"}
-# directive in deeply nested structure
 {a:{b:{c:[@d]}}}	{"a": {"b": {"c": ["D"]}}}
 
-# --- errors: directive does not handle pairs (must be a value) ---
-a:1, @a	!error unexpected
-{a:1, @a}	!error unexpected
-a:1 @a	!error unexpected
-{a:1 @a}	!error unexpected
+# --- plain values pass through unchanged ---
+[]	[]
+{}	{}
+[1, 2, 3]	[1, 2, 3]
+{x:1, y:2}	{"x": 1, "y": 2}
+
+# --- errors: the open token must be followed by a value ---
+@	!error unexpected
+[@]	!error unexpected
