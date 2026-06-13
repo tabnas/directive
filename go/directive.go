@@ -5,7 +5,7 @@ package directive
 import (
 	"fmt"
 
-	tabnas "github.com/tabnas/parser/go"
+	jsonic "github.com/jsonicjs/jsonic/go"
 )
 
 const Version = "0.1.4"
@@ -14,13 +14,13 @@ const Version = "0.1.4"
 // It receives the directive rule and parse context. The rule's Child.Node
 // contains the parsed content between open (and optional close) tokens.
 // Set rule.Node to the directive's result value.
-type Action func(rule *tabnas.Rule, ctx *tabnas.Context)
+type Action func(rule *jsonic.Rule, ctx *jsonic.Context)
 
 // RuleMod configures how a directive integrates with an existing grammar rule.
 type RuleMod struct {
 	// C is an optional condition that must be true for the directive to match
 	// within this rule.
-	C tabnas.AltCond
+	C jsonic.AltCond
 }
 
 // RulesOption configures which grammar rules are modified by the directive.
@@ -31,15 +31,15 @@ type RulesOption struct {
 	Close map[string]*RuleMod
 }
 
-// CustomFunc allows additional customization of the tabnas instance
+// CustomFunc allows additional customization of the jsonic instance
 // after the directive rule is created.
-type CustomFunc func(j *tabnas.Tabnas, config DirectiveConfig)
+type CustomFunc func(j *jsonic.Jsonic, config DirectiveConfig)
 
 // DirectiveConfig holds the resolved token Tins for a directive,
 // passed to CustomFunc callbacks.
 type DirectiveConfig struct {
-	OPEN  tabnas.Tin
-	CLOSE tabnas.Tin // -1 if no close token
+	OPEN  jsonic.Tin
+	CLOSE jsonic.Tin // -1 if no close token
 	Name  string
 }
 
@@ -64,15 +64,33 @@ type DirectiveOptions struct {
 	// Set to &RulesOption{} to override defaults with no rules.
 	Rules *RulesOption
 
-	// Custom allows additional tabnas customization after directive setup.
+	// Custom allows additional jsonic customization after directive setup.
 	Custom CustomFunc
 }
 
-// Apply registers a Directive plugin on the given tabnas instance.
-// Returns the tabnas instance for chaining.
-func Apply(j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas {
-	pluginMap := map[string]any{"_opts": &opts}
-	j.Use(Directive, pluginMap)
+// Apply registers the Directive plugin on the given jsonic instance with
+// typed options. It is the convenience constructor mirroring the
+// TypeScript `j.use(Directive, options)` call; under the hood it forwards
+// the options to j.Use as the plugin option map. Returns the jsonic
+// instance for chaining.
+//
+// To register the raw plugin directly — e.g. from a JSON-driven config —
+// call j.Use(directive.Directive, opts) with the same option keys
+// ("name", "open", "close", "action", "rules", "custom").
+func Apply(j *jsonic.Jsonic, opts DirectiveOptions) *jsonic.Jsonic {
+	pluginOpts := map[string]any{
+		"name":   opts.Name,
+		"open":   opts.Open,
+		"close":  opts.Close,
+		"action": opts.Action,
+		"custom": opts.Custom,
+	}
+	// Distinguish "rules omitted" (use defaults) from an explicit empty
+	// RulesOption (modify no rules): only set the key when provided.
+	if opts.Rules != nil {
+		pluginOpts["rules"] = opts.Rules
+	}
+	_ = j.Use(Directive, pluginOpts)
 	return j
 }
 
@@ -106,39 +124,41 @@ func resolveRules(rules map[string]*RuleMod) map[string]*RuleMod {
 	return result
 }
 
-// extractOptions retrieves DirectiveOptions from the plugin options map.
-func extractOptions(m map[string]any) *DirectiveOptions {
-	if m != nil {
-		if opts, ok := m["_opts"].(*DirectiveOptions); ok {
-			return opts
-		}
-	}
-	return &DirectiveOptions{}
-}
-
-// Directive is a tabnas plugin that adds directive syntax support.
-// A directive defines a custom token sequence (open and optional close)
+// Directive is the jsonic plugin that adds directive syntax support. A
+// directive defines a custom token sequence (open and optional close)
 // that triggers an action callback to transform the parsed content.
-func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
-	opts := extractOptions(pluginOpts)
+//
+// It follows the standard jsonic plugin shape — a Plugin value that reads
+// its configuration from the option map passed to j.Use. Recognised keys:
+//
+//	"name"   string      — directive/rule name (required)
+//	"open"   string      — open token source (required)
+//	"close"  string      — optional close token source
+//	"action" Action      — content transform callback
+//	"rules"  *RulesOption — rules to modify; omit for defaults
+//	"custom" CustomFunc   — extra setup callback
+//
+// Most callers use the typed Apply constructor rather than calling this
+// directly.
+var Directive jsonic.Plugin = func(j *jsonic.Jsonic, opts map[string]any) error {
+	name, _ := opts["name"].(string)
+	open, _ := opts["open"].(string)
+	close_, _ := opts["close"].(string)
+	action, _ := opts["action"].(Action)
+	custom, _ := opts["custom"].(CustomFunc)
+	hasClose := close_ != ""
 
-	// Resolve rules: nil means use defaults.
+	// Resolve rules: an absent "rules" key means use defaults; a present
+	// (even empty) *RulesOption is honoured as-is.
 	var openRules, closeRules map[string]*RuleMod
-	if opts.Rules == nil {
+	if rulesOpt, ok := opts["rules"].(*RulesOption); ok && rulesOpt != nil {
+		openRules = resolveRules(rulesOpt.Open)
+		closeRules = resolveRules(rulesOpt.Close)
+	} else {
 		defaults := defaultRules()
 		openRules = resolveRules(defaults.Open)
 		closeRules = resolveRules(defaults.Close)
-	} else {
-		openRules = resolveRules(opts.Rules.Open)
-		closeRules = resolveRules(opts.Rules.Close)
 	}
-
-	name := opts.Name
-	open := opts.Open
-	close_ := opts.Close
-	action := opts.Action
-	custom := opts.Custom
-	hasClose := close_ != ""
 
 	// The open token must not already be registered.
 	cfg := j.Config()
@@ -151,7 +171,7 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	OPEN := j.Token(openTN, open)
 
 	// Register or look up the close fixed token.
-	var CLOSE tabnas.Tin = -1
+	var CLOSE jsonic.Tin = -1
 	closeTN := ""
 	if hasClose {
 		if existing, exists := cfg.FixedTokens[close_]; exists {
@@ -166,37 +186,26 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		}
 	}
 
-	// NOTE: The canonical TypeScript plugin also registers
-	// "<name>_close" error and hint message templates here (via
-	// jsonic.options). The Go port omits them deliberately:
-	//   1. They are dormant in both runtimes — no grammar alt raises
-	//      "<name>_close", so a stray close token yields the engine's
-	//      generic "unexpected" error (see the close-foo.tsv spec).
-	//   2. The Go engine's SetOptions re-applies registered plugins, so
-	//      calling it from within this plugin would re-enter Directive
-	//      and panic on the duplicate open token.
-	// This divergence is recorded in docs/reference.md.
-
 	// Build a Ref map for all state actions and condition functions
 	// referenced by the grammar spec below.
-	ref := map[tabnas.FuncRef]any{}
+	ref := map[jsonic.FuncRef]any{}
 
 	// Auto-wired state actions on the directive rule (@<name>-bo, @<name>-bc).
-	ref[tabnas.FuncRef("@"+name+"-bo")] = tabnas.StateAction(
-		func(r *tabnas.Rule, ctx *tabnas.Context) {
+	ref[jsonic.FuncRef("@"+name+"-bo")] = jsonic.StateAction(
+		func(r *jsonic.Rule, ctx *jsonic.Context) {
 			r.Node = make(map[string]any)
 		},
 	)
-	ref[tabnas.FuncRef("@"+name+"-bc")] = tabnas.StateAction(
-		func(r *tabnas.Rule, ctx *tabnas.Context) {
+	ref[jsonic.FuncRef("@"+name+"-bc")] = jsonic.StateAction(
+		func(r *jsonic.Rule, ctx *jsonic.Context) {
 			// Follow the replacement chain to get the final child node.
 			// When a val rule is replaced by a list rule (implicit list),
 			// the original child's Node may be stale in Go because slice
 			// append can reallocate. Walk the Prev-linked replacement
 			// chain to find the last replacement and adopt its Node.
-			if r.Child != nil && r.Child != tabnas.NoRule {
+			if r.Child != nil && r.Child != jsonic.NoRule {
 				final := r.Child
-				for final.Next != nil && final.Next != tabnas.NoRule &&
+				for final.Next != nil && final.Next != jsonic.NoRule &&
 					final.Next.Prev == final {
 					final = final.Next
 				}
@@ -211,15 +220,15 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	)
 
 	// Declarative grammar spec built up below and applied via j.Grammar().
-	gs := &tabnas.GrammarSpec{
+	gs := &jsonic.GrammarSpec{
 		Ref:  ref,
-		Rule: map[string]*tabnas.GrammarRuleSpec{},
+		Rule: map[string]*jsonic.GrammarRuleSpec{},
 	}
-	ruleFor := func(rn string) *tabnas.GrammarRuleSpec {
+	ruleFor := func(rn string) *jsonic.GrammarRuleSpec {
 		if existing, ok := gs.Rule[rn]; ok {
 			return existing
 		}
-		r := &tabnas.GrammarRuleSpec{}
+		r := &jsonic.GrammarRuleSpec{}
 		gs.Rule[rn] = r
 		return r
 	}
@@ -230,33 +239,33 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		rn := rulename
 		rm := rulemod
 
-		var openAlts []*tabnas.GrammarAltSpec
-		var closeAlts []*tabnas.GrammarAltSpec
+		var openAlts []*jsonic.GrammarAltSpec
+		var closeAlts []*jsonic.GrammarAltSpec
 
 		if hasClose {
 			// OPEN+CLOSE (empty directive) must be tried before OPEN alone.
-			openAlts = append(openAlts, &tabnas.GrammarAltSpec{
+			openAlts = append(openAlts, &jsonic.GrammarAltSpec{
 				S: openTN + " " + closeTN,
 				B: 1,
 				P: name,
 				N: map[string]int{"dr_" + name: 1},
 				G: "start,end",
 			})
-			closeAlts = append(closeAlts, &tabnas.GrammarAltSpec{
+			closeAlts = append(closeAlts, &jsonic.GrammarAltSpec{
 				S: closeTN,
 				B: 1,
 				G: "end",
 			})
 		}
 
-		openAlt := &tabnas.GrammarAltSpec{
+		openAlt := &jsonic.GrammarAltSpec{
 			S: openTN,
 			P: name,
 			N: map[string]int{"dr_" + name: 1},
 			G: "start",
 		}
 		if rm.C != nil {
-			cref := tabnas.FuncRef("@dr-open-c-" + name + "-" + rn)
+			cref := jsonic.FuncRef("@dr-open-c-" + name + "-" + rn)
 			ref[cref] = rm.C
 			openAlt.C = string(cref)
 		}
@@ -276,9 +285,9 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 			rn := rulename
 			rm := rulemod
 
-			closeCRef := tabnas.FuncRef("@dr-close-c-" + name + "-" + rn)
-			ref[closeCRef] = tabnas.AltCond(
-				func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			closeCRef := jsonic.FuncRef("@dr-close-c-" + name + "-" + rn)
+			ref[closeCRef] = jsonic.AltCond(
+				func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 					if r.N["dr_"+name] != 1 {
 						return false
 					}
@@ -288,14 +297,14 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 					return true
 				},
 			)
-			commaCRef := tabnas.FuncRef("@dr-close-ca-c-" + name + "-" + rn)
-			ref[commaCRef] = tabnas.AltCond(
-				func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			commaCRef := jsonic.FuncRef("@dr-close-ca-c-" + name + "-" + rn)
+			ref[commaCRef] = jsonic.AltCond(
+				func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 					return r.N["dr_"+name] == 1
 				},
 			)
 
-			closeAlts := []*tabnas.GrammarAltSpec{
+			closeAlts := []*jsonic.GrammarAltSpec{
 				{
 					S: closeTN,
 					C: string(closeCRef),
@@ -317,10 +326,10 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 
 	// ---- Directive rule alts ----
 
-	var dirOpen []*tabnas.GrammarAltSpec
+	var dirOpen []*jsonic.GrammarAltSpec
 	if hasClose {
 		// Check for immediate close (empty directive).
-		dirOpen = append(dirOpen, &tabnas.GrammarAltSpec{
+		dirOpen = append(dirOpen, &jsonic.GrammarAltSpec{
 			S: closeTN,
 			B: 1,
 		})
@@ -337,14 +346,14 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		counters["dlist"] = 1
 		counters["dmap"] = 1
 	}
-	dirOpen = append(dirOpen, &tabnas.GrammarAltSpec{
+	dirOpen = append(dirOpen, &jsonic.GrammarAltSpec{
 		P: "val",
 		N: counters,
 	})
 
-	var dirClose []*tabnas.GrammarAltSpec
+	var dirClose []*jsonic.GrammarAltSpec
 	if hasClose {
-		dirClose = []*tabnas.GrammarAltSpec{
+		dirClose = []*jsonic.GrammarAltSpec{
 			{S: closeTN},
 			{S: "#CA " + closeTN},
 		}
@@ -359,14 +368,14 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	// Clear any pre-existing alts/state actions on the directive rule so
 	// that j.Grammar() below installs a clean set via wireStateActions +
 	// prepend onto empty slices.
-	j.Rule(name, func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+	j.Rule(name, func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.Clear()
 	})
 
 	// Apply grammar with 'directive' group tag appended to every alt.
-	setting := &tabnas.GrammarSetting{
-		Rule: &tabnas.GrammarSettingRule{
-			Alt: &tabnas.GrammarSettingAlt{G: "directive"},
+	setting := &jsonic.GrammarSetting{
+		Rule: &jsonic.GrammarSettingRule{
+			Alt: &jsonic.GrammarSettingAlt{G: "directive"},
 		},
 	}
 	if err := j.Grammar(gs, setting); err != nil {
@@ -376,7 +385,7 @@ func Directive(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	// ---- Custom callback ----
 
 	if custom != nil {
-		closeTin := tabnas.Tin(-1)
+		closeTin := jsonic.Tin(-1)
 		if hasClose {
 			closeTin = CLOSE
 		}

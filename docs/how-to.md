@@ -4,9 +4,9 @@ Practical recipes for common problems. Each guide assumes you have
 already followed the [Tutorial](tutorial.md) and know how to register
 a basic directive.
 
-The Go examples use the three import aliases from the tutorial:
-`tabnas` (engine, `github.com/tabnas/parser/go`), `jsonic` (grammar,
-`github.com/tabnas/parser/go/jsonic`), and `directive`
+The Go examples use the two import aliases from the tutorial: `jsonic`
+(the relaxed-JSON grammar, and the `Rule`/`Context`/`AltSpec`/… types,
+`github.com/jsonicjs/jsonic/go`) and `directive`
 (`github.com/tabnas/directive/go`).
 
 
@@ -33,7 +33,7 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:  "group",
     Open:  "(",
     Close: ")",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
+    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
         r.Node = r.Child.Node
     },
 })
@@ -119,7 +119,7 @@ rules: {
 Rules: &directive.RulesOption{
     Open: map[string]*directive.RuleMod{
         "val":  {},
-        "pair": {C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.Lte("pk", 0) }},
+        "pair": {C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.Lte("pk", 0) }},
     },
 },
 ```
@@ -150,7 +150,7 @@ x := 42
 directive.Apply(j, directive.DirectiveOptions{
     Name: "constant",
     Open: "@",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
+    Action: func(r *jsonic.Rule, _ *jsonic.Context) { r.Node = x },
 })
 ```
 
@@ -192,11 +192,11 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:   "subobj",
     Open:   "@",
     Action: /* … */,
-    Custom: func(j *tabnas.Tabnas, cfg directive.DirectiveConfig) {
-        j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-            rs.PrependOpen(&tabnas.AltSpec{
-                S: [][]tabnas.Tin{{cfg.OPEN}},
-                C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.D == 0 },
+    Custom: func(j *jsonic.Jsonic, cfg directive.DirectiveConfig) {
+        j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+            rs.PrependOpen(&jsonic.AltSpec{
+                S: [][]jsonic.Tin{{cfg.OPEN}},
+                C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
                 P: "map",
                 B: 1,
                 N: map[string]int{cfg.Name + "_top": 1},
@@ -250,7 +250,7 @@ defaults" instead).
 directive.Apply(j, directive.DirectiveOptions{
     Name:   "none",
     Open:   "@",
-    Action: func(*tabnas.Rule, *tabnas.Context) {},
+    Action: func(*jsonic.Rule, *jsonic.Context) {},
     Rules:  &directive.RulesOption{},
 })
 ```

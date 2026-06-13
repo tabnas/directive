@@ -28,28 +28,33 @@ not a parser of its own.
 
 ## The source dependencies
 
-The directive sits on two packages, neither published to a registry, so
-both are consumed from source via `scripts/fetch-deps.sh` (downloads
-their GitHub `main` branches into `vendor/`):
+The directive extends the **jsonic** relaxed-JSON grammar (unquoted keys,
+implicit lists/maps, …) — it needs the grammar rules (`val`, `map`,
+`pair`, `list`, `elem`) to exist, and it imports its plugin API types
+(`Rule`, `Context`, `Tin`, `RuleSpec`, `AltSpec`, …) from the same
+package. So `jsonic` is the one package the source is written against, in
+both languages:
 
-- **tabnas** — the parser engine. npm `tabnas` (`vendor/tabnas-parser/ts`),
-  Go module `github.com/tabnas/parser/go`. Supplies the plugin's API
-  *types* (`Rule`, `Context`, `Tin`, `RuleSpec`, `AltSpec`, …). The
-  plugin source is written against the engine.
-- **jsonic** — the relaxed-JSON grammar (unquoted keys, implicit
-  lists/maps, …) the directive extends. The directive needs grammar
-  rules (`val`, `map`, `pair`, `list`, `elem`) to exist, so tests run
-  against a jsonic instance.
-  - TypeScript: npm `jsonic` (`vendor/tabnas-jsonic/ts`), used by the
-    tests. The TS source imports its types from `jsonic` (which
-    re-exports the engine types), and `jsonic` is the peer dependency.
-  - Go: the grammar is a subpackage of the engine,
-    `github.com/tabnas/parser/go/jsonic` — no separate vendored module.
+- TypeScript: npm `jsonic` (`vendor/tabnas-jsonic/ts`) — a thin grammar
+  layer on the `tabnas` engine. The source imports `Jsonic`, `Rule`,
+  `Plugin`, … from `jsonic`, and `jsonic` is the peer dependency.
+- Go: module `github.com/jsonicjs/jsonic/go` (`vendor/tabnas-jsonic/go`)
+  — currently a self-contained parser that bundles the engine. The
+  source imports `jsonic.Jsonic`, `jsonic.Rule`, … and a `go.mod`
+  `replace` points the require at the vendored copy.
 
-Pin refs with `TABNAS_PARSER_REF` / `TABNAS_JSONIC_REF`; set
-`TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch. Always fetch before
-installing/building; the Makefile, CI, and the SessionStart hook do this
-automatically.
+The **tabnas** parser engine (npm `tabnas`, Go module
+`github.com/tabnas/parser/go`) is a *transitive* dependency: the
+TypeScript `jsonic` layer is built on it, so the engine is fetched into
+`vendor/tabnas-parser` to build jsonic-TS. The Go `jsonic` module vendors
+its own engine, so the Go build never references `tabnas` directly.
+
+Neither package is published to a registry, so both are consumed from
+source via `scripts/fetch-deps.sh`, which downloads their GitHub `main`
+branches into `vendor/` (git-ignored). Pin refs with `TABNAS_PARSER_REF`
+/ `TABNAS_JSONIC_REF`; set `TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch.
+Always fetch before installing/building; the Makefile, CI, and the
+SessionStart hook do this automatically.
 
 ## Build and test
 
@@ -95,8 +100,13 @@ in sync when behaviour changes. Notable items:
   `go/directive_test.go`, both driven by `test/spec/*.tsv`.
 - Go: run `gofmt` and `go vet ./...` before committing.
 - The directive operates on a *jsonic* instance, not a bare engine —
-  examples and tests start from `Jsonic.make()` (TS) /
-  `jsonic.Make()` (Go, from `.../go/jsonic`).
+  examples and tests start from `Jsonic.make()` (TS) / `jsonic.Make()`
+  (Go).
+- Plugin registration follows the standard jsonic shape. TypeScript:
+  `Directive` is a `Plugin` with `Directive.defaults`, registered via
+  `j.use(Directive, options)`. Go: `Directive` is a `jsonic.Plugin`
+  value that reads named keys from the option map; `Apply(j, opts)` is
+  the typed convenience constructor that forwards them to `j.Use`.
 
 ## Documentation
 

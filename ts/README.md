@@ -43,8 +43,7 @@ import (
     "fmt"
     "strings"
 
-    tabnas "github.com/tabnas/parser/go"
-    jsonic "github.com/tabnas/parser/go/jsonic"
+    jsonic "github.com/jsonicjs/jsonic/go"
     directive "github.com/tabnas/directive/go"
 )
 
@@ -52,7 +51,7 @@ j := jsonic.Make()
 directive.Apply(j, directive.DirectiveOptions{
     Name: "upper",
     Open: "@",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
+    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
         r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
     },
 })

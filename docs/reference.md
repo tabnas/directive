@@ -7,7 +7,9 @@ how to use these pieces, see the [Tutorial](tutorial.md) or the
 The plugin extends a [jsonic](https://github.com/tabnas/jsonic)
 relaxed-JSON parser, which runs on the
 [tabnas](https://github.com/tabnas/parser) engine. The plugin's types
-(`Rule`, `Context`, `Tin`, …) are engine types.
+(`Rule`, `Context`, `Tin`, …) come from the `jsonic` package — in
+TypeScript `jsonic` re-exports the engine types; in Go the `jsonic`
+module is a self-contained parser that defines them.
 
 
 ## TypeScript API
@@ -64,17 +66,19 @@ is a pair you can mutate `rule.parent.node` instead and leave
 
 ```go
 import (
-    tabnas "github.com/tabnas/parser/go"
+    jsonic "github.com/jsonicjs/jsonic/go"
     directive "github.com/tabnas/directive/go"
 )
 
 directive.Apply(j, directive.DirectiveOptions{ ... })
-// or, manually:
-j.Use(directive.Directive, map[string]any{"_opts": &opts})
+// or, registering the raw plugin with named option keys:
+j.Use(directive.Directive, map[string]any{
+    "name": "upper", "open": "@", "action": action,
+})
 ```
 
-`j` is any `*tabnas.Tabnas` instance with a grammar — typically one from
-`github.com/tabnas/parser/go/jsonic`'s `Make()`.
+`j` is any `*jsonic.Jsonic` instance with a grammar — typically one from
+`github.com/jsonicjs/jsonic/go`'s `Make()`.
 
 ### `DirectiveOptions`
 
@@ -95,23 +99,23 @@ type RulesOption struct {
     Close map[string]*RuleMod
 }
 type RuleMod struct {
-    C tabnas.AltCond // optional per-rule condition
+    C jsonic.AltCond // optional per-rule condition
 }
 ```
 
 ### `Action`
 
 ```go
-type Action func(rule *tabnas.Rule, ctx *tabnas.Context)
+type Action func(rule *jsonic.Rule, ctx *jsonic.Context)
 ```
 
 ### `CustomFunc`, `DirectiveConfig`
 
 ```go
-type CustomFunc      func(j *tabnas.Tabnas, config DirectiveConfig)
+type CustomFunc      func(j *jsonic.Jsonic, config DirectiveConfig)
 type DirectiveConfig struct {
-    OPEN  tabnas.Tin
-    CLOSE tabnas.Tin // -1 if no close token
+    OPEN  jsonic.Tin
+    CLOSE jsonic.Tin // -1 if no close token
     Name  string
 }
 ```

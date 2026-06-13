@@ -31,8 +31,8 @@ build-ts: deps
 test-ts: build-ts
 	cd ts && npm test
 
-# Go (parity). The Go grammar lives in the vendored engine, so the Go
-# build needs no TypeScript build of the dependencies.
+# Go (parity). The Go jsonic grammar is a self-contained module, so the
+# Go build needs no TypeScript build of the dependencies.
 build-go:
 	TABNAS_SKIP_TS_BUILD=1 ./scripts/fetch-deps.sh
 	cd go && go build ./...

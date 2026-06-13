@@ -13,8 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	tabnas "github.com/tabnas/parser/go"
-	jsonic "github.com/tabnas/parser/go/jsonic"
+	jsonic "github.com/jsonicjs/jsonic/go"
 )
 
 // --- TSV spec loader ---
@@ -61,9 +60,9 @@ func loadSpec(t *testing.T, name string) []specCase {
 }
 
 // numberToFloat64 recursively converts json.Number values to float64 so
-// a parsed spec tree deep-equals a tabnas-parsed tree (which uses float64
+// a parsed spec tree deep-equals a jsonic-parsed tree (which uses float64
 // for all numbers). Not needed for encoding/json's default behavior, but
-// kept here for clarity — tabnas also returns float64 for numbers.
+// kept here for clarity — jsonic also returns float64 for numbers.
 func normalizeSpec(v any) any {
 	switch x := v.(type) {
 	case map[string]any:
@@ -82,7 +81,7 @@ func normalizeSpec(v any) any {
 	return v
 }
 
-func runSpec(t *testing.T, j *tabnas.Tabnas, name string) {
+func runSpec(t *testing.T, j *jsonic.Jsonic, name string) {
 	t.Helper()
 	cases := loadSpec(t, name)
 	for _, c := range cases {
@@ -141,7 +140,7 @@ func TestHappy(t *testing.T) {
 	Apply(j, DirectiveOptions{
 		Name: "upper",
 		Open: "@",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			rule.Node = strings.ToUpper(fmt.Sprintf("%v", rule.Child.Node))
 		},
 	})
@@ -155,7 +154,7 @@ func TestClose(t *testing.T) {
 		Name:  "foo",
 		Open:  "foo<",
 		Close: ">",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			rule.Node = "FOO"
 		},
 	})
@@ -167,7 +166,7 @@ func TestClose(t *testing.T) {
 		Name:  "bar",
 		Open:  "bar<",
 		Close: ">",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			rule.Node = "BAR"
 		},
 	})
@@ -179,7 +178,7 @@ func TestClose(t *testing.T) {
 		Apply(j, DirectiveOptions{
 			Name:   "baz",
 			Open:   "bar<",
-			Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
+			Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {},
 		})
 	})
 }
@@ -190,7 +189,7 @@ func TestAdder(t *testing.T) {
 		Name:  "adder",
 		Open:  "add<",
 		Close: ">",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			if arr, ok := rule.Child.Node.([]any); ok && len(arr) > 0 {
 				// If any element is a string, concatenate; otherwise sum.
 				allNum := true
@@ -225,7 +224,7 @@ func TestAdder(t *testing.T) {
 		Name:  "multiplier",
 		Open:  "mul<",
 		Close: ">",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			if arr, ok := rule.Child.Node.([]any); ok && len(arr) > 0 {
 				out := 1.0
 				for _, v := range arr {
@@ -251,7 +250,7 @@ func TestEdges(t *testing.T) {
 	Apply(j, DirectiveOptions{
 		Name:   "none",
 		Open:   "@",
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {},
 		Rules:  &RulesOption{}, // Empty rules: no existing rules modified.
 	})
 
@@ -276,7 +275,7 @@ func TestInject(t *testing.T) {
 		Rules: &RulesOption{
 			Open: map[string]*RuleMod{"val": {}, "pair": {}},
 		},
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			srcname := fmt.Sprintf("%v", rule.Child.Node)
 			val := src[srcname]
 			if rule.Parent != nil && rule.Parent.Name == "pair" {
@@ -291,13 +290,13 @@ func TestInject(t *testing.T) {
 			}
 			rule.Node = val
 		},
-		Custom: func(j *tabnas.Tabnas, cfg DirectiveConfig) {
+		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
 			OPEN := cfg.OPEN
 			name := cfg.Name
-			j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.PrependOpen(&tabnas.AltSpec{
-					S: [][]tabnas.Tin{{OPEN}},
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.PrependOpen(&jsonic.AltSpec{
+					S: [][]jsonic.Tin{{OPEN}},
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.D == 0
 					},
 					P: "map",
@@ -305,10 +304,10 @@ func TestInject(t *testing.T) {
 					N: map[string]int{name + "_top": 1},
 				})
 			})
-			j.Rule("map", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.PrependOpen(&tabnas.AltSpec{
-					S: [][]tabnas.Tin{{OPEN}},
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.PrependOpen(&jsonic.AltSpec{
+					S: [][]jsonic.Tin{{OPEN}},
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.D == 1 && r.N[name+"_top"] == 1
 					},
 					P: "pair",
@@ -327,25 +326,25 @@ func TestAnnotate(t *testing.T) {
 		Name:  "annotate",
 		Open:  "@",
 		Rules: &RulesOption{Open: map[string]*RuleMod{"val": {}}},
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			rule.Parent.U["note"] = "<" + fmt.Sprintf("%v", rule.Child.Node) + ">"
 		},
-		Custom: func(j *tabnas.Tabnas, cfg DirectiveConfig) {
+		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
 			name := cfg.Name
-			j.Rule(name, func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.PrependClose(&tabnas.AltSpec{
+			j.Rule(name, func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.PrependClose(&jsonic.AltSpec{
 					R: "val",
 					G: "replace",
 				})
-				rs.AddAC(func(rule *tabnas.Rule, ctx *tabnas.Context) {
-					if rule.Parent != nil && rule.Parent != tabnas.NoRule &&
-						rule.Next != nil && rule.Next != tabnas.NoRule {
+				rs.AddAC(func(rule *jsonic.Rule, ctx *jsonic.Context) {
+					if rule.Parent != nil && rule.Parent != jsonic.NoRule &&
+						rule.Next != nil && rule.Next != jsonic.NoRule {
 						rule.Parent.Child = rule.Next
 					}
 				})
 			})
-			j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.AddBC(func(r *tabnas.Rule, ctx *tabnas.Context) {
+			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.AddBC(func(r *jsonic.Rule, ctx *jsonic.Context) {
 					if note, ok := r.U["note"]; ok && note != nil {
 						if m, ok := r.Node.(map[string]any); ok {
 							m["@"] = note
@@ -368,20 +367,20 @@ func TestSubobj(t *testing.T) {
 			Open: map[string]*RuleMod{
 				"val": {},
 				"pair": {
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.Lte("pk", 0)
 					},
 				},
 			},
 		},
-		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
+		Action: func(rule *jsonic.Rule, ctx *jsonic.Context) {
 			key := fmt.Sprintf("%v", rule.Child.Node)
 			val := strings.ToUpper(key)
 			res := map[string]any{key: val}
 
 			// Merge into grandparent node if it's a map.
-			if rule.Parent != nil && rule.Parent != tabnas.NoRule &&
-				rule.Parent.Parent != nil && rule.Parent.Parent != tabnas.NoRule {
+			if rule.Parent != nil && rule.Parent != jsonic.NoRule &&
+				rule.Parent.Parent != nil && rule.Parent.Parent != jsonic.NoRule {
 				if m, ok := rule.Parent.Parent.Node.(map[string]any); ok {
 					for k, v := range res {
 						m[k] = v
@@ -391,24 +390,24 @@ func TestSubobj(t *testing.T) {
 			}
 			rule.Node = res
 		},
-		Custom: func(j *tabnas.Tabnas, cfg DirectiveConfig) {
+		Custom: func(j *jsonic.Jsonic, cfg DirectiveConfig) {
 			OPEN := cfg.OPEN
 			name := cfg.Name
 
 			// Handle @foo at top level: assume a map.
-			j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+			j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 				rs.PrependOpen(
-					&tabnas.AltSpec{
-						S: [][]tabnas.Tin{{OPEN}},
-						C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+					&jsonic.AltSpec{
+						S: [][]jsonic.Tin{{OPEN}},
+						C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 							return r.N["pk"] > 0
 						},
 						B: 1,
 						G: name + "-undive",
 					},
-					&tabnas.AltSpec{
-						S: [][]tabnas.Tin{{OPEN}},
-						C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+					&jsonic.AltSpec{
+						S: [][]jsonic.Tin{{OPEN}},
+						C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 							return r.D == 0
 						},
 						P: "map",
@@ -419,19 +418,19 @@ func TestSubobj(t *testing.T) {
 				)
 			})
 
-			j.Rule("map", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.PrependOpen(&tabnas.AltSpec{
-					S: [][]tabnas.Tin{{OPEN}},
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.PrependOpen(&jsonic.AltSpec{
+					S: [][]jsonic.Tin{{OPEN}},
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.D == 1 && r.N[name+"_top"] == 1
 					},
 					P: "pair",
 					B: 1,
 					G: name + "-top",
 				})
-				rs.PrependClose(&tabnas.AltSpec{
-					S: [][]tabnas.Tin{{OPEN}},
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+				rs.PrependClose(&jsonic.AltSpec{
+					S: [][]jsonic.Tin{{OPEN}},
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.N["pk"] > 0
 					},
 					B: 1,
@@ -439,10 +438,10 @@ func TestSubobj(t *testing.T) {
 				})
 			})
 
-			j.Rule("pair", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
-				rs.PrependClose(&tabnas.AltSpec{
-					S: [][]tabnas.Tin{{OPEN}},
-					C: func(r *tabnas.Rule, ctx *tabnas.Context) bool {
+			j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+				rs.PrependClose(&jsonic.AltSpec{
+					S: [][]jsonic.Tin{{OPEN}},
+					C: func(r *jsonic.Rule, ctx *jsonic.Context) bool {
 						return r.N["pk"] > 0
 					},
 					B: 1,

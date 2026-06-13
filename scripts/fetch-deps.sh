@@ -2,21 +2,25 @@
 # Fetch and build the directive's source dependencies from their GitHub
 # main branches.
 #
-# The directive is a plugin for the tabnas parser engine, and its tests
-# run against the relaxed-JSON ("jsonic") grammar. Neither dependency is
-# published to a registry, so both are consumed from source:
+# The directive extends the relaxed-JSON ("jsonic") grammar; that is the
+# package its source is written against in both languages. The jsonic
+# TypeScript layer is in turn built on the tabnas parser engine. Neither
+# dependency is published to a registry, so both are consumed from
+# source:
 #
-#   - github.com/tabnas/parser  (npm `tabnas`, Go module
-#     github.com/tabnas/parser/go) — the grammar-free engine. Provides
-#     the plugin API types the directive is written against, and (Go
-#     only) its relaxed-JSON grammar subpackage .../go/jsonic.
-#   - github.com/tabnas/jsonic   (npm `jsonic`) — the relaxed-JSON
-#     grammar layer for TypeScript, built on the engine. Used by the
-#     TypeScript tests to obtain a grammar instance.
+#   - github.com/tabnas/jsonic   — the relaxed-JSON grammar. npm `jsonic`
+#     (a thin layer on the engine) for TypeScript; Go module
+#     github.com/jsonicjs/jsonic/go (a self-contained parser that bundles
+#     the engine) for Go. The directive imports its types and grammar
+#     from here.
+#   - github.com/tabnas/parser   (npm `tabnas`) — the grammar-free
+#     engine. Needed transitively to build the TypeScript jsonic layer;
+#     the Go jsonic module vendors its own engine, so the Go build does
+#     not use it.
 #
 # This script downloads both main branches over HTTPS into ./vendor
-# (git-ignored), points jsonic's engine dependency at the vendored
-# engine, and builds the TypeScript packages so their dist/ is
+# (git-ignored), points jsonic's TypeScript engine dependency at the
+# vendored engine, and builds the TypeScript packages so their dist/ is
 # importable.
 #
 # Re-run it to refresh to the latest main. Pin different refs with

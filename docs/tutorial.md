@@ -79,10 +79,10 @@ one value) and open+close (consumes everything up to the close token).
 
 ## Go
 
-In Go the relaxed-JSON grammar lives in the `jsonic` subpackage of the
-engine module. You import three packages: the engine (`tabnas`, for the
-`Rule`/`Context` types your action uses), the grammar (`jsonic`, for a
-ready-to-use parser), and the directive plugin.
+In Go the relaxed-JSON grammar is the `jsonic` module — a self-contained
+parser. You import two packages: the grammar (`jsonic`, which gives you a
+ready-to-use parser *and* the `Rule`/`Context` types your action uses)
+and the directive plugin.
 
 ### 1. Create a file `upper.go`
 
@@ -93,8 +93,7 @@ import (
     "fmt"
     "strings"
 
-    tabnas "github.com/tabnas/parser/go"
-    jsonic "github.com/tabnas/parser/go/jsonic"
+    jsonic "github.com/jsonicjs/jsonic/go"
     directive "github.com/tabnas/directive/go"
 )
 
@@ -103,7 +102,7 @@ func main() {
     directive.Apply(j, directive.DirectiveOptions{
         Name: "upper",
         Open: "@",
-        Action: func(r *tabnas.Rule, _ *tabnas.Context) {
+        Action: func(r *jsonic.Rule, _ *jsonic.Context) {
             r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
         },
     })
@@ -138,7 +137,7 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:  "upper",
     Open:  "U<",
     Close: ">",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
+    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
         r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
     },
 })

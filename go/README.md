@@ -11,14 +11,15 @@ authoritative and this package tracks it. A few intentional differences
 (Go static typing, engine-API limits) are listed in
 [the reference](../docs/reference.md#typescript--go-differences).
 
-The plugin extends the relaxed-JSON grammar in
-`github.com/tabnas/parser/go/jsonic`, so it operates on a `jsonic.Make()`
+The plugin extends the relaxed-JSON
+[`jsonic`](https://github.com/tabnas/jsonic) grammar
+(`github.com/jsonicjs/jsonic/go`), so it operates on a `jsonic.Make()`
 instance — not a bare engine.
 
 ## Install
 
 ```bash
-go get github.com/tabnas/parser/go
+go get github.com/jsonicjs/jsonic/go
 go get github.com/tabnas/directive/go
 ```
 
@@ -31,8 +32,7 @@ import (
 	"fmt"
 	"strings"
 
-	tabnas "github.com/tabnas/parser/go"
-	jsonic "github.com/tabnas/parser/go/jsonic"
+	jsonic "github.com/jsonicjs/jsonic/go"
 	directive "github.com/tabnas/directive/go"
 )
 
@@ -41,7 +41,7 @@ func main() {
 	directive.Apply(j, directive.DirectiveOptions{
 		Name: "upper",
 		Open: "@",
-		Action: func(r *tabnas.Rule, _ *tabnas.Context) {
+		Action: func(r *jsonic.Rule, _ *jsonic.Context) {
 			r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
 		},
 	})
@@ -62,9 +62,8 @@ cd go && go build ./... && go vet ./... && go test ./...
 ```
 
 Or, from the repository root, `make test-go` does all of the above. The
-`go.mod` `replace` directive points the `github.com/tabnas/parser/go`
-requirement (and its `.../jsonic` subpackage) at the fetched copy in
-`../vendor`.
+`go.mod` `replace` directive points the `github.com/jsonicjs/jsonic/go`
+requirement at the fetched copy in `../vendor/tabnas-jsonic/go`.
 
 ## License
 
