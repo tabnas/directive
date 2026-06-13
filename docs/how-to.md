@@ -4,6 +4,11 @@ Practical recipes for common problems. Each guide assumes you have
 already followed the [Tutorial](tutorial.md) and know how to register
 a basic directive.
 
+The Go examples use the three import aliases from the tutorial:
+`tabnas` (engine, `github.com/tabnas/parser/go`), `jsonic` (grammar,
+`github.com/tabnas/parser/go/jsonic`), and `directive`
+(`github.com/tabnas/directive/go`).
+
 
 ## How to add a close token
 
@@ -28,7 +33,7 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:  "group",
     Open:  "(",
     Close: ")",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
         r.Node = r.Child.Node
     },
 })
@@ -56,7 +61,7 @@ directive.Apply(j, directive.DirectiveOptions{Name: "bar", Open: "bar<", Close: 
 ```
 
 The open tokens (`foo<`, `bar<`) must still be unique — attempting to
-reuse an open token throws / panics.
+reuse an open token throws (TypeScript) / panics (Go).
 
 
 ## How to restrict where a directive is recognised
@@ -114,7 +119,7 @@ rules: {
 Rules: &directive.RulesOption{
     Open: map[string]*directive.RuleMod{
         "val":  {},
-        "pair": {C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.Lte("pk", 0) }},
+        "pair": {C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.Lte("pk", 0) }},
     },
 },
 ```
@@ -122,8 +127,8 @@ Rules: &directive.RulesOption{
 
 ## How to read a value from parser options
 
-In TypeScript the `action` field accepts a dotted-path string. The
-plugin looks up that path on `jsonic.options` every time the
+In TypeScript the `action` field also accepts a dotted-path string.
+The plugin looks up that path on `jsonic.options` every time the
 directive fires.
 
 ```ts
@@ -137,24 +142,26 @@ j.options({ custom: { x: 42 } })
 j('@')     // → 42
 ```
 
-Go does not support string `action`; write a closure that captures
-the value:
+Go's `Action` is a typed function, so it has no string form. Write a
+closure that captures the value instead:
 
 ```go
 x := 42
 directive.Apply(j, directive.DirectiveOptions{
     Name: "constant",
     Open: "@",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) { r.Node = x },
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
 })
 ```
+
+See [Reference → TypeScript/Go differences](reference.md#typescript--go-differences).
 
 
 ## How to run additional rule tweaks after the directive is set up
 
 Use `custom` (Go: `Custom`) to install your own grammar alts after
 the plugin has finished wiring up. You receive the resolved
-`OPEN` / `CLOSE` Tins and the directive name.
+`OPEN` / `CLOSE` tokens and the directive name.
 
 **TypeScript:**
 
@@ -185,11 +192,11 @@ directive.Apply(j, directive.DirectiveOptions{
     Name:   "subobj",
     Open:   "@",
     Action: /* … */,
-    Custom: func(j *jsonic.Jsonic, cfg directive.DirectiveConfig) {
-        j.Rule("val", func(rs *jsonic.RuleSpec) {
-            rs.PrependOpen(&jsonic.AltSpec{
-                S: [][]jsonic.Tin{{cfg.OPEN}},
-                C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
+    Custom: func(j *tabnas.Tabnas, cfg directive.DirectiveConfig) {
+        j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+            rs.PrependOpen(&tabnas.AltSpec{
+                S: [][]tabnas.Tin{{cfg.OPEN}},
+                C: func(r *tabnas.Rule, _ *tabnas.Context) bool { return r.D == 0 },
                 P: "map",
                 B: 1,
                 N: map[string]int{cfg.Name + "_top": 1},
@@ -215,33 +222,35 @@ Blank lines and `#`-prefixed lines are ignored.
 Run the existing specs:
 
 ```sh
-npm test          # TypeScript
-go test ./go/...  # Go
+make test-ts      # TypeScript (canonical)
+make test-go      # Go (parity)
 ```
 
-Add a new case by appending a row to the relevant `.tsv` file; both
-test suites pick it up automatically.
+Or directly: `cd ts && npm test`, `cd go && go test ./...`. Add a new
+case by appending a row to the relevant `.tsv` file; both test suites
+pick it up automatically.
 
 
 ## How to disable the default rule wiring
 
-Set `rules` to an empty object to skip all default rule
-modifications. Only the directive rule itself is created; its open
-token will only match via rules you install via `custom`.
+Skip all default rule modifications. Only the directive rule itself is
+created; its open token will then only match via rules you install in
+`custom`.
 
-**TypeScript:**
+**TypeScript:** pass `rules: null`.
 
 ```ts
 .use(Directive, { name: 'none', open: '@', action: () => null, rules: null })
 ```
 
-**Go:**
+**Go:** pass an empty `&RulesOption{}` (a `nil` `Rules` means "use the
+defaults" instead).
 
 ```go
 directive.Apply(j, directive.DirectiveOptions{
     Name:   "none",
     Open:   "@",
-    Action: func(*jsonic.Rule, *jsonic.Context) {},
+    Action: func(*tabnas.Rule, *tabnas.Context) {},
     Rules:  &directive.RulesOption{},
 })
 ```

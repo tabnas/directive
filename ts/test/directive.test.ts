@@ -9,7 +9,7 @@ import { Jsonic, Rule } from 'jsonic'
 import { Directive } from '../dist/directive'
 
 
-// Jsonic produces null-prototype objects; normalize both sides so
+// The parser produces null-prototype objects; normalize both sides so
 // deepStrictEqual's prototype check doesn't spuriously fail.
 const normalize = (v: any): any => {
   if (v === null || typeof v !== 'object') return v
