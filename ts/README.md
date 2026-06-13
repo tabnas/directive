@@ -1,26 +1,22 @@
-# @jsonic/directive — directive syntax for Jsonic
+# @tabnas/directive — directive syntax for the tabnas parser
 
-Adds directive syntax to the [Jsonic](https://jsonic.senecajs.org) JSON
+Adds directive syntax to the [tabnas](https://github.com/tabnas/parser)
 parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
-triggers custom parsing behaviour. TypeScript and Go ports share the
-same API shape and test specs.
+triggers custom parsing behaviour. The plugin extends the
+[jsonic](https://github.com/tabnas/jsonic) relaxed-JSON grammar.
+TypeScript (canonical) and Go ports share the same API shape and test
+specs.
 
-[![npm version](https://img.shields.io/npm/v/@jsonic/directive.svg)](https://npmjs.com/package/@jsonic/directive)
-[![build](https://github.com/jsonicjs/directive/actions/workflows/build.yml/badge.svg)](https://github.com/jsonicjs/directive/actions/workflows/build.yml)
+[![npm version](https://img.shields.io/npm/v/@tabnas/directive.svg)](https://npmjs.com/package/@tabnas/directive)
+[![build](https://github.com/tabnas/directive/actions/workflows/build.yml/badge.svg)](https://github.com/tabnas/directive/actions/workflows/build.yml)
 
 
 ## Documentation
 
-This project's documentation follows the [Diátaxis](https://diataxis.fr)
-framework. Each section has one job — pick the one that matches what
-you're trying to do.
-
-| If you want to…                                | Read                                     |
-| ---------------------------------------------- | ---------------------------------------- |
-| Build your first directive step-by-step        | [Tutorial](docs/tutorial.md)             |
-| Solve a specific problem                       | [How-to guides](docs/how-to.md)          |
-| Look up an option, type, or default            | [Reference](docs/reference.md)           |
-| Understand how the plugin works internally     | [Explanation](docs/explanation.md)       |
+The cross-language docs live in [`../docs/`](../docs): a
+[tutorial](../docs/tutorial.md), [how-to guides](../docs/how-to.md), a
+[reference](../docs/reference.md), and an [explanation](../docs/explanation.md)
+of how the plugin works.
 
 
 ## Quickstart
@@ -29,7 +25,7 @@ you're trying to do.
 
 ```ts
 import { Jsonic } from 'jsonic'
-import { Directive } from '@jsonic/directive'
+import { Directive } from '@tabnas/directive'
 
 const j = Jsonic.make().use(Directive, {
   name: 'upper',
@@ -44,8 +40,11 @@ j('[@a, @b, 1]') // → ['A', 'B', 1]
 
 ```go
 import (
+    "fmt"
+    "strings"
+
     jsonic "github.com/jsonicjs/jsonic/go"
-    directive "github.com/jsonicjs/directive/go"
+    directive "github.com/tabnas/directive/go"
 )
 
 j := jsonic.Make()
@@ -59,6 +58,14 @@ directive.Apply(j, directive.DirectiveOptions{
 
 j.Parse("[@a, @b, 1]") // → []any{"A", "B", float64(1)}
 ```
+
+
+## Build and test
+
+The `tabnas` engine and `jsonic` grammar are consumed from source. From
+the repository root, `make build` / `make test` fetch them into
+`vendor/` and build/test both implementations. See the
+[root README](../README.md) and [`../AGENTS.md`](../AGENTS.md).
 
 
 ## License

@@ -68,11 +68,29 @@ type DirectiveOptions struct {
 	Custom CustomFunc
 }
 
-// Apply registers a Directive plugin on the given jsonic instance.
-// Returns the jsonic instance for chaining.
+// Apply registers the Directive plugin on the given jsonic instance with
+// typed options. It is the convenience constructor mirroring the
+// TypeScript `j.use(Directive, options)` call; under the hood it forwards
+// the options to j.Use as the plugin option map. Returns the jsonic
+// instance for chaining.
+//
+// To register the raw plugin directly — e.g. from a JSON-driven config —
+// call j.Use(directive.Directive, opts) with the same option keys
+// ("name", "open", "close", "action", "rules", "custom").
 func Apply(j *jsonic.Jsonic, opts DirectiveOptions) *jsonic.Jsonic {
-	pluginMap := map[string]any{"_opts": &opts}
-	j.Use(Directive, pluginMap)
+	pluginOpts := map[string]any{
+		"name":   opts.Name,
+		"open":   opts.Open,
+		"close":  opts.Close,
+		"action": opts.Action,
+		"custom": opts.Custom,
+	}
+	// Distinguish "rules omitted" (use defaults) from an explicit empty
+	// RulesOption (modify no rules): only set the key when provided.
+	if opts.Rules != nil {
+		pluginOpts["rules"] = opts.Rules
+	}
+	_ = j.Use(Directive, pluginOpts)
 	return j
 }
 
@@ -106,39 +124,41 @@ func resolveRules(rules map[string]*RuleMod) map[string]*RuleMod {
 	return result
 }
 
-// extractOptions retrieves DirectiveOptions from the plugin options map.
-func extractOptions(m map[string]any) *DirectiveOptions {
-	if m != nil {
-		if opts, ok := m["_opts"].(*DirectiveOptions); ok {
-			return opts
-		}
-	}
-	return &DirectiveOptions{}
-}
-
-// Directive is a jsonic plugin that adds directive syntax support.
-// A directive defines a custom token sequence (open and optional close)
+// Directive is the jsonic plugin that adds directive syntax support. A
+// directive defines a custom token sequence (open and optional close)
 // that triggers an action callback to transform the parsed content.
-func Directive(j *jsonic.Jsonic, pluginOpts map[string]any) error {
-	opts := extractOptions(pluginOpts)
+//
+// It follows the standard jsonic plugin shape — a Plugin value that reads
+// its configuration from the option map passed to j.Use. Recognised keys:
+//
+//	"name"   string      — directive/rule name (required)
+//	"open"   string      — open token source (required)
+//	"close"  string      — optional close token source
+//	"action" Action      — content transform callback
+//	"rules"  *RulesOption — rules to modify; omit for defaults
+//	"custom" CustomFunc   — extra setup callback
+//
+// Most callers use the typed Apply constructor rather than calling this
+// directly.
+var Directive jsonic.Plugin = func(j *jsonic.Jsonic, opts map[string]any) error {
+	name, _ := opts["name"].(string)
+	open, _ := opts["open"].(string)
+	close_, _ := opts["close"].(string)
+	action, _ := opts["action"].(Action)
+	custom, _ := opts["custom"].(CustomFunc)
+	hasClose := close_ != ""
 
-	// Resolve rules: nil means use defaults.
+	// Resolve rules: an absent "rules" key means use defaults; a present
+	// (even empty) *RulesOption is honoured as-is.
 	var openRules, closeRules map[string]*RuleMod
-	if opts.Rules == nil {
+	if rulesOpt, ok := opts["rules"].(*RulesOption); ok && rulesOpt != nil {
+		openRules = resolveRules(rulesOpt.Open)
+		closeRules = resolveRules(rulesOpt.Close)
+	} else {
 		defaults := defaultRules()
 		openRules = resolveRules(defaults.Open)
 		closeRules = resolveRules(defaults.Close)
-	} else {
-		openRules = resolveRules(opts.Rules.Open)
-		closeRules = resolveRules(opts.Rules.Close)
 	}
-
-	name := opts.Name
-	open := opts.Open
-	close_ := opts.Close
-	action := opts.Action
-	custom := opts.Custom
-	hasClose := close_ != ""
 
 	// The open token must not already be registered.
 	cfg := j.Config()

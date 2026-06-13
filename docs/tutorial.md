@@ -1,9 +1,13 @@
 # Tutorial: your first directive
 
-In this tutorial you will build a Jsonic parser that treats `@x` as a
-custom directive which uppercases the following word. By the end you
-will have a running program that parses `[@a, @b, 1]` and prints
-`['A', 'B', 1]`.
+In this tutorial you will build a parser that treats `@x` as a custom
+directive which uppercases the following word. By the end you will have
+a running program that parses `[@a, @b, 1]` and produces `['A', 'B', 1]`.
+
+A directive is a plugin for the [jsonic](https://github.com/tabnas/jsonic)
+relaxed-JSON grammar, which itself runs on the
+[tabnas](https://github.com/tabnas/parser) parser engine. You bring a
+jsonic parser instance; the directive plugin extends it.
 
 Choose your language and work through the steps in order. You do not
 need to understand every line — the [Explanation](explanation.md)
@@ -12,18 +16,21 @@ covers the why.
 
 ## TypeScript
 
-### 1. Install
+### 1. Add the dependencies
 
-```sh
-npm install jsonic @jsonic/directive
-```
-
-### 2. Create a file `upper.ts`
+The directive plugin (`@tabnas/directive`) extends the `jsonic`
+grammar. Both depend on the `tabnas` engine. See the
+[README](../README.md) for how the dependencies are wired from source
+during development.
 
 ```ts
 import { Jsonic } from 'jsonic'
-import { Directive } from '@jsonic/directive'
+import { Directive } from '@tabnas/directive'
+```
 
+### 2. Register the directive
+
+```ts
 const j = Jsonic.make().use(Directive, {
   name: 'upper',
   open: '@',
@@ -35,31 +42,18 @@ const j = Jsonic.make().use(Directive, {
 
 ### 3. Parse some input
 
-Append to `upper.ts`:
+A jsonic instance is callable — pass it a string to parse:
 
 ```ts
-console.log(j('@hello'))
-console.log(j('[@a, @b, 1]'))
-console.log(j('{x:@a, y:@b}'))
+console.log(j('@hello'))         // HELLO
+console.log(j('[@a, @b, 1]'))    // [ 'A', 'B', 1 ]
+console.log(j('{x:@a, y:@b}'))   // { x: 'A', y: 'B' }
 ```
 
-### 4. Run it
+### 4. Add a close token
 
-```sh
-npx ts-node upper.ts
-```
-
-You should see:
-
-```
-HELLO
-[ 'A', 'B', 1 ]
-{ x: 'A', y: 'B' }
-```
-
-### 5. Add a close token
-
-Replace the `.use(Directive, ...)` call with:
+So far the directive consumes a single value. A *close* token lets it
+wrap an arbitrary body. Replace the `.use(Directive, ...)` call with:
 
 ```ts
 .use(Directive, {
@@ -75,8 +69,8 @@ Replace the `.use(Directive, ...)` call with:
 Try it:
 
 ```ts
-console.log(j('U<hello world>'))         // HELLO WORLD
-console.log(j('[U<a>, U<b>, 1]'))        // [ 'A', 'B', 1 ]
+console.log(j('U<hello world>'))    // HELLO WORLD
+console.log(j('[U<a>, U<b>, 1]'))   // [ 'A', 'B', 1 ]
 ```
 
 You have now built a directive with both forms: open-only (consumes
@@ -85,14 +79,12 @@ one value) and open+close (consumes everything up to the close token).
 
 ## Go
 
-### 1. Install
+In Go the relaxed-JSON grammar is the `jsonic` module — a self-contained
+parser. You import two packages: the grammar (`jsonic`, which gives you a
+ready-to-use parser *and* the `Rule`/`Context` types your action uses)
+and the directive plugin.
 
-```sh
-go get github.com/jsonicjs/jsonic/go
-go get github.com/jsonicjs/directive/go
-```
-
-### 2. Create a file `upper.go`
+### 1. Create a file `upper.go`
 
 ```go
 package main
@@ -102,7 +94,7 @@ import (
     "strings"
 
     jsonic "github.com/jsonicjs/jsonic/go"
-    directive "github.com/jsonicjs/directive/go"
+    directive "github.com/tabnas/directive/go"
 )
 
 func main() {
@@ -122,7 +114,7 @@ func main() {
 }
 ```
 
-### 3. Run it
+### 2. Run it
 
 ```sh
 go run upper.go
@@ -136,7 +128,7 @@ You should see:
 {x:@a, y:@b} → map[string]interface {}{"x":"A", "y":"B"}
 ```
 
-### 4. Add a close token
+### 3. Add a close token
 
 Replace the `directive.Apply(...)` call with:
 
