@@ -1,10 +1,13 @@
-# multiplier.tsv — tests the "multiplier" directive (open="mul<", close=">")
-# Action: multiplies a list of numbers; non-numeric handling is language-specific
-# so only numeric cases are shared here.
+# multiplier.tsv — the "multiplier" directive (open="mul<", close=">")
+# over the mini test grammar. Action: multiplies the numbers in the list
+# body; an empty body yields 0. mul<[2, 3]> → 6.
 # Format: <input>\t<expected-json>    or    <input>\t!error <regex>
 
-mul<2,3>	6
-mul<2,3,4>	24
-a:mul<2,3>	{"a": 6}
-[mul<2,3>]	[6]
-mul<5,2>	10
+mul<[2, 3]>	6
+mul<[2, 3, 4]>	24
+mul<[5]>	5
+mul<[]>	0
+
+# --- nested in the mini grammar's containers ---
+[mul<[2, 3]>, mul<[4, 5]>]	[6, 20]
+{x:mul<[2, 3]>}	{"x": 6}

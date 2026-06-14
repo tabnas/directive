@@ -4,19 +4,18 @@ Complete API listing for the directive plugin. For an orientation on
 how to use these pieces, see the [Tutorial](tutorial.md) or the
 [How-to guides](how-to.md).
 
-The plugin extends a [jsonic](https://github.com/tabnas/jsonic)
-relaxed-JSON parser, which runs on the
-[tabnas](https://github.com/tabnas/parser) engine. The plugin's types
-(`Rule`, `Context`, `Tin`, …) come from the `jsonic` package — in
-TypeScript `jsonic` re-exports the engine types; in Go the `jsonic`
-module is a self-contained parser that defines them.
+The plugin's only dependency is the
+[tabnas](https://github.com/tabnas/parser) parser engine; its types
+(`Rule`, `Context`, `Tin`, …) come from there. The plugin modifies host
+grammar rules (`val` / `list` / `map` / `pair`), so it is applied to an
+engine instance that already has a grammar installed.
 
 
 ## TypeScript API
 
 ### `Directive` (plugin)
 
-A `Plugin`. Register via `jsonic.use(Directive, options)`.
+A `Plugin`. Register via `j.use(Directive, options)`.
 
 ```ts
 import { Directive, DirectiveOptions } from '@tabnas/directive'
@@ -29,9 +28,9 @@ import { Directive, DirectiveOptions } from '@tabnas/directive'
 | `name`    | `string`                              | yes      | Directive name. Also used as the rule name and the token-name suffix.   |
 | `open`    | `string`                              | yes      | Character sequence that starts the directive. Must be unique per instance. |
 | `close`   | `string`                              | no       | Character sequence that ends the directive. If omitted the directive consumes a single value. |
-| `action`  | `StateAction \| string`               | yes      | Function called when the directive closes, or a dotted path into `jsonic.options`. |
+| `action`  | `StateAction \| string`               | yes      | Function called when the directive closes, or a dotted path into the instance options. |
 | `rules`   | `RulesOption \| null`                 | no       | Which existing grammar rules detect this directive. See [Rules](#rules-defaults). `null` → modify no rules. |
-| `custom`  | `(jsonic, config) => void`            | no       | Callback invoked after setup. `config = { OPEN, CLOSE, name }`.         |
+| `custom`  | `(tabnas, config) => void`            | no       | Callback invoked after setup. `config = { OPEN, CLOSE, name }`.         |
 
 ### `RulesOption`
 
@@ -66,19 +65,31 @@ is a pair you can mutate `rule.parent.node` instead and leave
 
 ```go
 import (
-    jsonic "github.com/jsonicjs/jsonic/go"
+    tabnas "github.com/tabnas/parser/go"
     directive "github.com/tabnas/directive/go"
 )
 
-directive.Apply(j, directive.DirectiveOptions{ ... })
+// Apply returns (instance, error). The plugin never panics — every
+// failure path is reported through the error.
+j, err := directive.Apply(j, directive.DirectiveOptions{ ... })
 // or, registering the raw plugin with named option keys:
-j.Use(directive.Directive, map[string]any{
+err = j.Use(directive.Directive, map[string]any{
     "name": "upper", "open": "@", "action": action,
 })
 ```
 
-`j` is any `*jsonic.Jsonic` instance with a grammar — typically one from
-`github.com/jsonicjs/jsonic/go`'s `Make()`.
+`j` is any `*tabnas.Tabnas` instance with a host grammar installed (one
+that defines the `val` / `list` / `map` / `pair` rules).
+
+### `Apply`
+
+```go
+func Apply(j *tabnas.Tabnas, opts DirectiveOptions) (*tabnas.Tabnas, error)
+```
+
+`Apply` registers the directive and returns any registration error (a
+duplicate open token, or a grammar build failure). The plugin never
+panics — callers always get an `error` to handle.
 
 ### `DirectiveOptions`
 
@@ -99,23 +110,23 @@ type RulesOption struct {
     Close map[string]*RuleMod
 }
 type RuleMod struct {
-    C jsonic.AltCond // optional per-rule condition
+    C tabnas.AltCond // optional per-rule condition
 }
 ```
 
 ### `Action`
 
 ```go
-type Action func(rule *jsonic.Rule, ctx *jsonic.Context)
+type Action func(rule *tabnas.Rule, ctx *tabnas.Context)
 ```
 
 ### `CustomFunc`, `DirectiveConfig`
 
 ```go
-type CustomFunc      func(j *jsonic.Jsonic, config DirectiveConfig)
+type CustomFunc      func(j *tabnas.Tabnas, config DirectiveConfig)
 type DirectiveConfig struct {
-    OPEN  jsonic.Tin
-    CLOSE jsonic.Tin // -1 if no close token
+    OPEN  tabnas.Tin
+    CLOSE tabnas.Tin // -1 if no close token
     Name  string
 }
 ```
@@ -180,7 +191,8 @@ are permitted inside the directive body:
 
 | Situation                                       | TS behaviour               | Go behaviour              |
 | ----------------------------------------------- | -------------------------- | ------------------------- |
-| Registering a directive whose `open` is already fixed | `throw` Error             | `panic`                   |
+| Registering a directive whose `open` is already fixed | `throw` Error             | `Apply` / `j.Use` return an `error` (no panic) |
+| Grammar build failure during registration       | `throw` (engine)           | `Apply` / `j.Use` return an `error` (no panic) |
 | Parsing a close token without its open          | engine `unexpected` error  | engine `unexpected` error |
 
 
@@ -195,10 +207,10 @@ typing and from engine-API differences, not from drift:
 | --- | --- | --- |
 | **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string array, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. |
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. |
-| **String-path action** | `action: 'a.b.c'` resolves a dotted path on `jsonic.options` at fire time. | `Action` is a typed func; capture the value in a closure instead. |
+| **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | `Action` is a typed func; capture the value in a closure instead. |
 | **Action return value** | An action may return a `Token` to override the next token. | `Action` returns nothing. |
-| **`<name>_close` error/hint** | Registered as named templates (currently dormant — no alt raises them). | Omitted: they are dormant in both runtimes, and the Go engine's `SetOptions` re-applies plugins, so registering them from inside the plugin would re-enter and panic. |
-| **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. |
+| **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. |
+| **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `test/spec/implicit.tsv`. |
 
 
 ## Spec file format (`test/spec/*.tsv`)

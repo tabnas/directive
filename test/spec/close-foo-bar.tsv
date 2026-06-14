@@ -1,26 +1,18 @@
-# close-foo-bar.tsv — tests after both "foo" and "bar" directives are registered
-# foo<...> → "FOO", bar<...> → "BAR" — both share ">" as close.
+# close-foo-bar.tsv — after both "foo" (foo<...>) and "bar" (bar<...>)
+# directives are registered, sharing the same close token ">".
+# foo<...> → "FOO", bar<...> → "BAR".
 # Format: <input>\t<expected-json>    or    <input>\t!error <regex>
 
-# --- bar alone ---
-{"a":1}	{"a": 1}
-{"a":bar< a >}	{"a": "BAR"}
-{"a":bar<{x:1}>}	{"a": "BAR"}
-{"a":bar<bar<a>>}	{"a": "BAR"}
-{"a":1,b:bar<b>}	{"a": 1, "b": "BAR"}
-{"a":1,b:bar<[2]>}	{"a": 1, "b": "BAR"}
-{"a":[1,bar<b>]}	{"a": [1, "BAR"]}
+foo<a>	"FOO"
+bar<a>	"BAR"
+foo<>	"FOO"
+bar<>	"BAR"
 
-# --- foo still works ---
-{"a":foo< a >}	{"a": "FOO"}
-{"a":foo<{x:1}>}	{"a": "FOO"}
-{"a":foo<foo<a>>}	{"a": "FOO"}
-{"a":1,b:foo<b>}	{"a": 1, "b": "FOO"}
-{"a":1,b:foo<[2]>}	{"a": 1, "b": "FOO"}
-{"a":[1,foo<b>]}	{"a": [1, "FOO"]}
+# --- both in the same structure ---
+[foo<a>, bar<b>]	["FOO", "BAR"]
+[bar<a>, foo<b>]	["BAR", "FOO"]
+{x:foo<a>, y:bar<b>}	{"x": "FOO", "y": "BAR"}
 
-# --- mixed ---
-{"a":foo< a >, b:bar<>}	{"a": "FOO", "b": "BAR"}
-[foo<1>, bar<2>]	["FOO", "BAR"]
-{a:foo<bar<x>>}	{"a": "FOO"}
-{a:bar<foo<x>>}	{"a": "BAR"}
+# --- nested across directives (shared close token) ---
+foo<bar<a>>	"FOO"
+bar<foo<a>>	"BAR"

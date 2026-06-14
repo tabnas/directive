@@ -1,7 +1,7 @@
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
 import {
-  Jsonic,
+  Tabnas,
   Rule,
   RuleSpec,
   StateAction,
@@ -9,7 +9,7 @@ import {
   Context,
   Token,
   Tin,
-} from 'jsonic'
+} from 'tabnas'
 
 
 type DirectiveOptions = {
@@ -22,7 +22,7 @@ type DirectiveOptions = {
     close?: string | string[] | Record<string, { c?: Function }>
   }
   custom?: (
-    jsonic: Jsonic,
+    tabnas: Tabnas,
     config: { OPEN: Tin; CLOSE: Tin | null | undefined; name: string },
   ) => void
 }
@@ -31,25 +31,28 @@ type DirectiveOptions = {
 const resolveRules = (
   rules: undefined | string | string[] | Record<string, { c?: Function }>
 ) => {
-  const rulemap = {}
+  const rulemap: Record<string, any> = {}
 
   if ('string' == typeof rules) {
     rules = rules.split(/\s*,\s*/)
   }
 
   if (Array.isArray(rules)) {
-    rules.reduce((a: any, n: any) => ((null != n && '' !== n ? a[n] = {} : null), a), rulemap)
+    for (const n of rules) {
+      if (null != n && '' !== n) rulemap[n] = {}
+    }
   }
   else if (null != rules) {
-    Object.keys(rules)
-      .reduce((a: any, k: any) => ((null != rules[k] ? a[k] = rules[k] : null), a), rulemap)
+    for (const k of Object.keys(rules)) {
+      if (null != rules[k]) rulemap[k] = rules[k]
+    }
   }
 
   return rulemap
 }
 
 
-const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
+const Directive: Plugin = (tabnas: Tabnas, options: DirectiveOptions) => {
   let rules = {
     open: resolveRules(options?.rules?.open),
     close: resolveRules(options?.rules?.close),
@@ -64,7 +67,7 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
   if ('string' === typeof options.action) {
     let path = options.action
     action = (rule: Rule) =>
-      (rule.node = jsonic.util.prop(jsonic.options, path))
+      (rule.node = tabnas.util.prop(tabnas.options, path))
   } else {
     action = options.action
   }
@@ -74,8 +77,8 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
   let openTN = '#OD_' + name
   let closeTN = '#CD_' + name
 
-  let OPEN: Tin = jsonic.fixed(open) as Tin
-  let CLOSE = null == close ? null : jsonic.fixed(close)
+  let OPEN: Tin = tabnas.fixed(open) as Tin
+  let CLOSE = null == close ? null : tabnas.fixed(close)
 
   // OPEN must be unique
   if (null != OPEN) {
@@ -89,38 +92,15 @@ const Directive: Plugin = (jsonic: Jsonic, options: DirectiveOptions) => {
     token[closeTN] = close
   }
 
-  jsonic.options({
+  tabnas.options({
     fixed: {
       token,
     },
-    error: {
-      [name + '_close']:
-        null == close
-          ? null
-          : 'directive ' +
-          name +
-          ' close "' +
-          close +
-          '" without open "' +
-          open +
-          '"',
-    },
-    hint: {
-      [name + '_close']:
-        null == close
-          ? null
-          : `
-The {name} directive must start with the characters "{open}" and end
-with the characters "{close}". The end characters "{close}" may not
-appear without the start characters "{open}" appearing first:
-"{open}...{close}".
-`,
-    },
   })
 
-  let CA = jsonic.token.CA
-  OPEN = jsonic.fixed(open) as Tin
-  CLOSE = null == close ? null : jsonic.fixed(close)
+  let CA = tabnas.token.CA
+  OPEN = tabnas.fixed(open) as Tin
+  CLOSE = null == close ? null : tabnas.fixed(close)
 
   // NOTE: RuleSpec.open|close refers to Rule state, whereas
   // OPEN|CLOSE refers to opening and closing tokens for the directive.
@@ -128,7 +108,7 @@ appear without the start characters "{open}" appearing first:
   // Pre-seed the directive rule's hooks (clear existing alts, set bo/bc).
   // `grammar()` below will then install the open/close alts with the
   // `directive` group tag appended via the setting arg.
-  jsonic.rule(name, (rs) =>
+  tabnas.rule(name, (rs) =>
     rs
       .clear()
       .bo((rule: Rule) => ((rule.node = {}), undefined))
@@ -222,10 +202,10 @@ appear without the start characters "{open}" appearing first:
     dr.close = [{ s: [CLOSE] }, { s: [CA, CLOSE] }]
   }
 
-  jsonic.grammar(grammarSpec, { rule: { alt: { g: 'directive' } } })
+  tabnas.grammar(grammarSpec, { rule: { alt: { g: 'directive' } } })
 
   if (custom) {
-    custom(jsonic, { OPEN, CLOSE, name })
+    custom(tabnas, { OPEN, CLOSE, name })
   }
 }
 

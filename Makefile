@@ -5,15 +5,16 @@
 # implementation in go/ is kept at parity with it. `all` builds and
 # tests both.
 #
-# Both implementations consume source dependencies from GitHub main: the
-# tabnas parser engine and the jsonic relaxed-JSON grammar. The `deps`
-# target downloads and builds them into vendor/ (git-ignored); build and
-# test targets depend on it.
+# The only dependency is the tabnas parser engine, consumed from its
+# GitHub main branch. The `parser` target downloads and builds it into
+# vendor/ (git-ignored); build and test targets depend on it. The tests
+# bring their own small grammar (ts/test/mini-grammar.ts,
+# go/mini_grammar_test.go).
 
 all: build test
 
-deps:
-	./scripts/fetch-deps.sh
+parser:
+	./scripts/fetch-parser.sh
 
 build: build-ts build-go
 
@@ -25,16 +26,16 @@ clean:
 	rm -rf vendor
 
 # TypeScript (canonical)
-build-ts: deps
+build-ts: parser
 	cd ts && npm install && npm run build
 
 test-ts: build-ts
 	cd ts && npm test
 
-# Go (parity). The Go jsonic grammar is a self-contained module, so the
-# Go build needs no TypeScript build of the dependencies.
+# Go (parity). Go consumes the engine source directly, so it skips the
+# TypeScript engine build.
 build-go:
-	TABNAS_SKIP_TS_BUILD=1 ./scripts/fetch-deps.sh
+	TABNAS_SKIP_TS_BUILD=1 ./scripts/fetch-parser.sh
 	cd go && go build ./...
 
 test-go: build-go

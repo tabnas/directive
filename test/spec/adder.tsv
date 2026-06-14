@@ -1,23 +1,13 @@
-# adder.tsv — tests the "adder" directive (open="add<", close=">")
-# Action: sums a list of numbers; concatenates for strings.
+# adder.tsv — the "adder" directive (open="add<", close=">") over the
+# mini test grammar. Action: sums the numbers in the list body; an empty
+# body yields 0. add<[1, 2]> → 3.
 # Format: <input>\t<expected-json>    or    <input>\t!error <regex>
 
-# --- basic arithmetic ---
-add<1,2>	3
-add<1,2,3>	6
-add<10,20,30>	60
+add<[1, 2]>	3
+add<[1, 2, 3]>	6
+add<[10]>	10
+add<[]>	0
 
-# --- embedded in containers ---
-a:add<1,2>	{"a": 3}
-[add<1,2>]	[3]
-{a:add<1,2>, b:add<3,4>}	{"a": 3, "b": 7}
-
-# --- string concatenation ---
-[add<a,b>]	["ab"]
-add<foo,bar>	"foobar"
-add<x,y,z>	"xyz"
-
-# Note: nesting add<add<...>,...> with shared close doesn't work because
-# the outer directive consumes the inner's close token. Keep nesting tests
-# to directives whose body is a single value (see close-foo.tsv).
-
+# --- nested in the mini grammar's containers ---
+[add<[1, 2]>, add<[3, 4]>]	[3, 7]
+{x:add<[1, 2]>}	{"x": 3}

@@ -5,11 +5,13 @@ Quick reminders:
 - `ts/` (TypeScript) is canonical; `go/` tracks it. Change TypeScript
   first, then update Go to match as far as the Go engine API and Go's
   type system allow.
-- The directive extends the `jsonic` relaxed-JSON grammar, which runs on
-  the `tabnas` engine. Neither is published; run `scripts/fetch-deps.sh`
-  to download + build their GitHub `main` branches into `vendor/` before
-  building or testing.
-- `make build` / `make test` fetch the dependencies and cover both
+- The directive is a plugin for the `tabnas` parser engine — its only
+  dependency. It is not published; run `scripts/fetch-parser.sh` to
+  download + build its GitHub `main` branch into `vendor/` before
+  building or testing. The tests bring their own small grammar
+  (`ts/test/mini-grammar.ts`, `go/mini_grammar_test.go`) — keep the two
+  in step.
+- `make build` / `make test` fetch the engine and cover both
   implementations.
 - Both implementations must pass the shared `test/spec/*.tsv` fixtures.
   Some TS/Go differences are intentional (static typing, engine-API

@@ -4,10 +4,15 @@ In this tutorial you will build a parser that treats `@x` as a custom
 directive which uppercases the following word. By the end you will have
 a running program that parses `[@a, @b, 1]` and produces `['A', 'B', 1]`.
 
-A directive is a plugin for the [jsonic](https://github.com/tabnas/jsonic)
-relaxed-JSON grammar, which itself runs on the
-[tabnas](https://github.com/tabnas/parser) parser engine. You bring a
-jsonic parser instance; the directive plugin extends it.
+A directive is a plugin for the
+[tabnas](https://github.com/tabnas/parser) parser engine. The engine
+ships no grammar of its own, so you bring a **host grammar** — any
+grammar that defines the usual `val` / `list` / `map` / `pair` rules —
+and the directive layers onto it. In the snippets below `hostGrammar` is
+that grammar plugin; a complete, minimal one (scalars, `[a, b]` lists and
+`{k: v}` maps) lives in this repo at
+[`ts/test/mini-grammar.ts`](../ts/test/mini-grammar.ts) /
+[`go/mini_grammar_test.go`](../go/mini_grammar_test.go).
 
 Choose your language and work through the steps in order. You do not
 need to understand every line — the [Explanation](explanation.md)
@@ -18,20 +23,21 @@ covers the why.
 
 ### 1. Add the dependencies
 
-The directive plugin (`@tabnas/directive`) extends the `jsonic`
-grammar. Both depend on the `tabnas` engine. See the
-[README](../README.md) for how the dependencies are wired from source
+The directive plugin (`@tabnas/directive`) and the `tabnas` engine. See
+the [README](../README.md) for how the engine is wired from source
 during development.
 
 ```ts
-import { Jsonic } from 'jsonic'
+import { Tabnas } from 'tabnas'
 import { Directive } from '@tabnas/directive'
 ```
 
 ### 2. Register the directive
 
+Start from a bare engine, add your host grammar, then the directive:
+
 ```ts
-const j = Jsonic.make().use(Directive, {
+const j = new Tabnas().use(hostGrammar).use(Directive, {
   name: 'upper',
   open: '@',
   action: (rule) => {
@@ -42,12 +48,12 @@ const j = Jsonic.make().use(Directive, {
 
 ### 3. Parse some input
 
-A jsonic instance is callable — pass it a string to parse:
+Call `parse` with a string:
 
 ```ts
-console.log(j('@hello'))         // HELLO
-console.log(j('[@a, @b, 1]'))    // [ 'A', 'B', 1 ]
-console.log(j('{x:@a, y:@b}'))   // { x: 'A', y: 'B' }
+console.log(j.parse('@hello'))         // HELLO
+console.log(j.parse('[@a, @b, 1]'))    // [ 'A', 'B', 1 ]
+console.log(j.parse('{x:@a, y:@b}'))   // { x: 'A', y: 'B' }
 ```
 
 ### 4. Add a close token
@@ -69,8 +75,8 @@ wrap an arbitrary body. Replace the `.use(Directive, ...)` call with:
 Try it:
 
 ```ts
-console.log(j('U<hello world>'))    // HELLO WORLD
-console.log(j('[U<a>, U<b>, 1]'))   // [ 'A', 'B', 1 ]
+console.log(j.parse('U<hello world>'))    // HELLO WORLD
+console.log(j.parse('[U<a>, U<b>, 1]'))   // [ 'A', 'B', 1 ]
 ```
 
 You have now built a directive with both forms: open-only (consumes
@@ -79,10 +85,9 @@ one value) and open+close (consumes everything up to the close token).
 
 ## Go
 
-In Go the relaxed-JSON grammar is the `jsonic` module — a self-contained
-parser. You import two packages: the grammar (`jsonic`, which gives you a
-ready-to-use parser *and* the `Rule`/`Context` types your action uses)
-and the directive plugin.
+You import two packages: the engine (`tabnas`, for the `Rule`/`Context`
+types your action uses) and the directive plugin. Your host grammar is
+applied with `j.Use` before the directive.
 
 ### 1. Create a file `upper.go`
 
@@ -93,19 +98,25 @@ import (
     "fmt"
     "strings"
 
-    jsonic "github.com/jsonicjs/jsonic/go"
+    tabnas "github.com/tabnas/parser/go"
     directive "github.com/tabnas/directive/go"
 )
 
 func main() {
-    j := jsonic.Make()
-    directive.Apply(j, directive.DirectiveOptions{
+    j := tabnas.Make()
+    j.Use(hostGrammar) // provides val / list / map / pair
+    // Apply returns an error (a duplicate open token, a grammar build
+    // failure); the plugin never panics.
+    if _, err := directive.Apply(j, directive.DirectiveOptions{
         Name: "upper",
         Open: "@",
-        Action: func(r *jsonic.Rule, _ *jsonic.Context) {
+        Action: func(r *tabnas.Rule, _ *tabnas.Context) {
             r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
         },
-    })
+    }); err != nil {
+        fmt.Println("directive setup failed:", err)
+        return
+    }
 
     for _, src := range []string{"@hello", "[@a, @b, 1]", "{x:@a, y:@b}"} {
         v, _ := j.Parse(src)
@@ -130,14 +141,15 @@ You should see:
 
 ### 3. Add a close token
 
-Replace the `directive.Apply(...)` call with:
+Replace the `directive.Apply(...)` options with (error handling
+elided here for brevity):
 
 ```go
 directive.Apply(j, directive.DirectiveOptions{
     Name:  "upper",
     Open:  "U<",
     Close: ">",
-    Action: func(r *jsonic.Rule, _ *jsonic.Context) {
+    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
         r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
     },
 })
