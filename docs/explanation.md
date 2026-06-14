@@ -163,6 +163,6 @@ same character sequence as their open token will collide.
   typing or the engine API are intentional and listed in
   [Reference → TypeScript/Go differences](reference.md#typescript--go-differences).
 - **Fail loudly.** Re-registering an open token throws (TypeScript) or
-  returns an error (Go — `MustApply` panics) rather than silently
+  returns an error (Go — the plugin never panics) rather than silently
   overwriting. A close token without its open produces a parse error,
   not a wrong parse.

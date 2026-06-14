@@ -105,13 +105,18 @@ import (
 func main() {
     j := tabnas.Make()
     j.Use(hostGrammar) // provides val / list / map / pair
-    directive.MustApply(j, directive.DirectiveOptions{
+    // Apply returns an error (a duplicate open token, a grammar build
+    // failure); the plugin never panics.
+    if _, err := directive.Apply(j, directive.DirectiveOptions{
         Name: "upper",
         Open: "@",
         Action: func(r *tabnas.Rule, _ *tabnas.Context) {
             r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
         },
-    })
+    }); err != nil {
+        fmt.Println("directive setup failed:", err)
+        return
+    }
 
     for _, src := range []string{"@hello", "[@a, @b, 1]", "{x:@a, y:@b}"} {
         v, _ := j.Parse(src)
@@ -136,10 +141,11 @@ You should see:
 
 ### 3. Add a close token
 
-Replace the `directive.MustApply(...)` call with:
+Replace the `directive.Apply(...)` options with (error handling
+elided here for brevity):
 
 ```go
-directive.MustApply(j, directive.DirectiveOptions{
+directive.Apply(j, directive.DirectiveOptions{
     Name:  "upper",
     Open:  "U<",
     Close: ">",

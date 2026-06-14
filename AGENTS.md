@@ -89,7 +89,7 @@ in sync when behaviour changes. Notable items:
   `&RulesOption{}` = no rules).
 - Registration failures (duplicate open token, grammar build error) are
   thrown in TS and returned as an `error` in Go (propagated by `j.Use` /
-  `Apply`; `MustApply` panics instead).
+  `Apply`); the Go plugin never panics.
 - Go's `bc` hook walks the `Prev`-linked replacement chain to adopt the
   final child node (a Go slice-reallocation workaround); implicit-list
   bodies in `test/spec/implicit.tsv` exercise it.
@@ -106,8 +106,8 @@ in sync when behaviour changes. Notable items:
   `Directive` is a `Plugin` with `Directive.defaults`, registered via
   `j.use(Directive, options)`. Go: `Directive` is a `tabnas.Plugin`
   value that reads named keys from the option map; `Apply(j, opts)`
-  (returns `error`) and `MustApply(j, opts)` (panics) are the typed
-  convenience constructors that forward them to `j.Use`.
+  (returns `(*Tabnas, error)`) is the typed convenience constructor that
+  forwards them to `j.Use`.
 
 ## Documentation
 

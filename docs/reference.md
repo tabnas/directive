@@ -69,9 +69,9 @@ import (
     directive "github.com/tabnas/directive/go"
 )
 
-// Apply returns (instance, error); MustApply panics on error instead.
+// Apply returns (instance, error). The plugin never panics — every
+// failure path is reported through the error.
 j, err := directive.Apply(j, directive.DirectiveOptions{ ... })
-j = directive.MustApply(j, directive.DirectiveOptions{ ... })
 // or, registering the raw plugin with named option keys:
 err = j.Use(directive.Directive, map[string]any{
     "name": "upper", "open": "@", "action": action,
@@ -81,17 +81,15 @@ err = j.Use(directive.Directive, map[string]any{
 `j` is any `*tabnas.Tabnas` instance with a host grammar installed (one
 that defines the `val` / `list` / `map` / `pair` rules).
 
-### `Apply` / `MustApply`
+### `Apply`
 
 ```go
 func Apply(j *tabnas.Tabnas, opts DirectiveOptions) (*tabnas.Tabnas, error)
-func MustApply(j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas
 ```
 
 `Apply` registers the directive and returns any registration error (a
-duplicate open token, or a grammar build failure). `MustApply` is the
-same but panics on error — convenient for setup code where the config is
-known to be valid.
+duplicate open token, or a grammar build failure). The plugin never
+panics — callers always get an `error` to handle.
 
 ### `DirectiveOptions`
 
@@ -193,8 +191,8 @@ are permitted inside the directive body:
 
 | Situation                                       | TS behaviour               | Go behaviour              |
 | ----------------------------------------------- | -------------------------- | ------------------------- |
-| Registering a directive whose `open` is already fixed | `throw` Error             | `Apply` / `j.Use` return an `error`; `MustApply` panics |
-| Grammar build failure during registration       | `throw` (engine)           | `Apply` / `j.Use` return an `error`; `MustApply` panics |
+| Registering a directive whose `open` is already fixed | `throw` Error             | `Apply` / `j.Use` return an `error` (no panic) |
+| Grammar build failure during registration       | `throw` (engine)           | `Apply` / `j.Use` return an `error` (no panic) |
 | Parsing a close token without its open          | engine `unexpected` error  | engine `unexpected` error |
 
 
@@ -211,7 +209,7 @@ typing and from engine-API differences, not from drift:
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. |
 | **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | `Action` is a typed func; capture the value in a closure instead. |
 | **Action return value** | An action may return a `Token` to override the next token. | `Action` returns nothing. |
-| **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`); `MustApply` converts it back to a panic. |
+| **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. |
 | **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `test/spec/implicit.tsv`. |
 
 

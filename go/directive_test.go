@@ -120,22 +120,22 @@ func runSpec(t *testing.T, j *tabnas.Tabnas, name string) {
 	}
 }
 
-// mustPanic asserts that fn panics. Used for the duplicate-open-token test.
-func mustPanic(t *testing.T, fn func()) {
+// mustApply registers a directive and fails the test on error. Setup
+// helper for the many cases whose configuration is known to be valid.
+func mustApply(t *testing.T, j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas {
 	t.Helper()
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic, got none")
-		}
-	}()
-	fn()
+	j, err := Apply(j, opts)
+	if err != nil {
+		t.Fatalf("Apply(%q): %v", opts.Name, err)
+	}
+	return j
 }
 
 // --- tests (mirroring ts/test/directive.test.ts) ---
 
 func TestHappy(t *testing.T) {
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name: "upper",
 		Open: "@",
 		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
@@ -148,7 +148,7 @@ func TestHappy(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:  "foo",
 		Open:  "foo<",
 		Close: ">",
@@ -164,7 +164,7 @@ func TestClose(t *testing.T) {
 	runSpec(t, j, "close-boundary.tsv")
 
 	// A second directive sharing the same close token ">".
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:  "bar",
 		Open:  "bar<",
 		Close: ">",
@@ -175,25 +175,20 @@ func TestClose(t *testing.T) {
 
 	runSpec(t, j, "close-foo-bar.tsv")
 
-	// Re-registering the same open token returns an error from Apply.
-	dup := DirectiveOptions{
+	// Re-registering the same open token returns an error from Apply
+	// rather than panicking.
+	if _, err := Apply(j, DirectiveOptions{
 		Name:   "baz",
 		Open:   "bar<",
 		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
-	}
-	if _, err := Apply(j, dup); err == nil {
+	}); err == nil {
 		t.Fatal("expected error re-registering open token, got nil")
 	}
-
-	// MustApply turns the same failure into a panic.
-	mustPanic(t, func() {
-		MustApply(j, dup)
-	})
 }
 
 func TestAdder(t *testing.T) {
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:  "adder",
 		Open:  "add<",
 		Close: ">",
@@ -215,7 +210,7 @@ func TestAdder(t *testing.T) {
 	// Implicit (bracketless) list bodies, e.g. add<1, 2, 3>.
 	runSpec(t, j, "implicit.tsv")
 
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:  "multiplier",
 		Open:  "mul<",
 		Close: ">",
@@ -247,7 +242,7 @@ func TestInject(t *testing.T) {
 	}
 
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name: "inject",
 		Open: "@",
 		Rules: &RulesOption{
@@ -277,7 +272,7 @@ func TestEdges(t *testing.T) {
 	// An explicit empty RulesOption modifies no host rules, so the open
 	// token is unrecognised.
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:   "none",
 		Open:   "@",
 		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
@@ -303,7 +298,7 @@ func TestCoverageExtras(t *testing.T) {
 	customName := ""
 
 	j := makeMini()
-	MustApply(j, DirectiveOptions{
+	mustApply(t, j, DirectiveOptions{
 		Name:  "cov",
 		Open:  "cov<",
 		Close: ">",

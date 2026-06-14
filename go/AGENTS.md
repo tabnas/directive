@@ -54,10 +54,13 @@ in `../docs/reference.md`):
   dotted-path string form, no `Token` return.
 - `Rules` is `*RulesOption` with `map[string]*RuleMod` fields: `nil`
   uses defaults, `&RulesOption{}` modifies no rules.
-- The `<name>_close` error/hint templates are omitted: calling
-  `SetOptions` from inside the plugin would re-apply plugins and re-enter
-  `Directive` (panic on the duplicate open token), and the templates are
-  dormant in both runtimes anyway.
+- There are no `<name>_close` error/hint templates: they were dormant
+  (nothing raised them) and have been removed from the canonical TS
+  plugin too. (Registering them here would also be awkward, since calling
+  `SetOptions` from inside the plugin re-applies plugins and re-enters
+  `Directive`.)
+- Registration failures return an `error` (propagated by `j.Use` /
+  `Apply`); the plugin never panics.
 - The `@<name>-bc` state action walks the `Prev`-linked replacement
   chain to adopt the final child node before calling the action — a
   workaround for Go slice reallocation when a `val` becomes an implicit
