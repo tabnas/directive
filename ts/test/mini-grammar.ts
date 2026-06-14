@@ -42,6 +42,23 @@ export const mini: Plugin = (am: Tabnas) => {
       '@elem-bc': (r: Rule) => {
         if (undefined !== r.child.node) r.node.push(r.child.node)
       },
+
+      // Implicit list: a standalone value followed by a comma starts a
+      // bracketless list. Only fires outside an elem/pair/ilist position
+      // (so explicit `[a, b]` and `{k: v}` are unaffected) and where
+      // implicit lists are permitted (`n.dlist !== 1`, the counter the
+      // directive plugin sets to 1 to suppress them).
+      '@implicit?': (r: Rule) =>
+        1 !== r.n.dlist &&
+        'elem' !== r.parent.name &&
+        'pair' !== r.parent.name &&
+        'ilist' !== r.parent.name,
+      // Seed the list with the already-parsed scalar value.
+      '@ilist-seed': (r: Rule) => (r.node = [r.node]),
+      // Push each subsequent element onto the inherited list node.
+      '@ilist-push': (r: Rule) => {
+        if (undefined !== r.child.node) r.node.push(r.child.node)
+      },
     },
 
     rule: {
@@ -51,7 +68,23 @@ export const mini: Plugin = (am: Tabnas) => {
           { s: '#OS', p: 'list', b: 1 }, // a list: `[ …`
           { s: '#VAL' }, // a plain scalar
         ],
-        close: [{ s: '#ZZ' }, { b: 1 }],
+        close: [
+          { s: '#ZZ' },
+          // Implicit list: scalar then comma → `[scalar, …]`.
+          { s: '#CA', b: 1, c: '@implicit?', r: 'ilist', a: '@ilist-seed' },
+          { b: 1 },
+        ],
+      },
+
+      // Bracketless list continuation. Created by replacing a val (so it
+      // inherits the seeded `[first]` node) and then absorbs `, value`
+      // pairs until something else closes it.
+      ilist: {
+        open: [{ s: '#CA', p: 'val' }], // consume comma, parse next value
+        close: [
+          { s: '#CA', b: 1, r: 'ilist', a: '@ilist-push' }, // more elements
+          { b: 1, a: '@ilist-push' }, // final element
+        ],
       },
 
       map: {

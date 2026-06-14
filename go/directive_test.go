@@ -135,7 +135,7 @@ func mustPanic(t *testing.T, fn func()) {
 
 func TestHappy(t *testing.T) {
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name: "upper",
 		Open: "@",
 		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {
@@ -148,7 +148,7 @@ func TestHappy(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name:  "foo",
 		Open:  "foo<",
 		Close: ">",
@@ -164,7 +164,7 @@ func TestClose(t *testing.T) {
 	runSpec(t, j, "close-boundary.tsv")
 
 	// A second directive sharing the same close token ">".
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name:  "bar",
 		Open:  "bar<",
 		Close: ">",
@@ -175,19 +175,25 @@ func TestClose(t *testing.T) {
 
 	runSpec(t, j, "close-foo-bar.tsv")
 
-	// Re-registering the same open token must panic.
+	// Re-registering the same open token returns an error from Apply.
+	dup := DirectiveOptions{
+		Name:   "baz",
+		Open:   "bar<",
+		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
+	}
+	if _, err := Apply(j, dup); err == nil {
+		t.Fatal("expected error re-registering open token, got nil")
+	}
+
+	// MustApply turns the same failure into a panic.
 	mustPanic(t, func() {
-		Apply(j, DirectiveOptions{
-			Name:   "baz",
-			Open:   "bar<",
-			Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
-		})
+		MustApply(j, dup)
 	})
 }
 
 func TestAdder(t *testing.T) {
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name:  "adder",
 		Open:  "add<",
 		Close: ">",
@@ -206,7 +212,10 @@ func TestAdder(t *testing.T) {
 
 	runSpec(t, j, "adder.tsv")
 
-	Apply(j, DirectiveOptions{
+	// Implicit (bracketless) list bodies, e.g. add<1, 2, 3>.
+	runSpec(t, j, "implicit.tsv")
+
+	MustApply(j, DirectiveOptions{
 		Name:  "multiplier",
 		Open:  "mul<",
 		Close: ">",
@@ -238,7 +247,7 @@ func TestInject(t *testing.T) {
 	}
 
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name: "inject",
 		Open: "@",
 		Rules: &RulesOption{
@@ -268,7 +277,7 @@ func TestEdges(t *testing.T) {
 	// An explicit empty RulesOption modifies no host rules, so the open
 	// token is unrecognised.
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name:   "none",
 		Open:   "@",
 		Action: func(rule *tabnas.Rule, ctx *tabnas.Context) {},
@@ -294,7 +303,7 @@ func TestCoverageExtras(t *testing.T) {
 	customName := ""
 
 	j := makeMini()
-	Apply(j, DirectiveOptions{
+	MustApply(j, DirectiveOptions{
 		Name:  "cov",
 		Open:  "cov<",
 		Close: ">",

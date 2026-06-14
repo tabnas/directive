@@ -105,7 +105,7 @@ import (
 func main() {
     j := tabnas.Make()
     j.Use(hostGrammar) // provides val / list / map / pair
-    directive.Apply(j, directive.DirectiveOptions{
+    directive.MustApply(j, directive.DirectiveOptions{
         Name: "upper",
         Open: "@",
         Action: func(r *tabnas.Rule, _ *tabnas.Context) {
@@ -136,10 +136,10 @@ You should see:
 
 ### 3. Add a close token
 
-Replace the `directive.Apply(...)` call with:
+Replace the `directive.MustApply(...)` call with:
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name:  "upper",
     Open:  "U<",
     Close: ">",

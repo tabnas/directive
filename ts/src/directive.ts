@@ -31,18 +31,21 @@ type DirectiveOptions = {
 const resolveRules = (
   rules: undefined | string | string[] | Record<string, { c?: Function }>
 ) => {
-  const rulemap = {}
+  const rulemap: Record<string, any> = {}
 
   if ('string' == typeof rules) {
     rules = rules.split(/\s*,\s*/)
   }
 
   if (Array.isArray(rules)) {
-    rules.reduce((a: any, n: any) => ((null != n && '' !== n ? a[n] = {} : null), a), rulemap)
+    for (const n of rules) {
+      if (null != n && '' !== n) rulemap[n] = {}
+    }
   }
   else if (null != rules) {
-    Object.keys(rules)
-      .reduce((a: any, k: any) => ((null != rules[k] ? a[k] = rules[k] : null), a), rulemap)
+    for (const k of Object.keys(rules)) {
+      if (null != rules[k]) rulemap[k] = rules[k]
+    }
   }
 
   return rulemap
@@ -92,29 +95,6 @@ const Directive: Plugin = (tabnas: Tabnas, options: DirectiveOptions) => {
   tabnas.options({
     fixed: {
       token,
-    },
-    error: {
-      [name + '_close']:
-        null == close
-          ? null
-          : 'directive ' +
-          name +
-          ' close "' +
-          close +
-          '" without open "' +
-          open +
-          '"',
-    },
-    hint: {
-      [name + '_close']:
-        null == close
-          ? null
-          : `
-The {name} directive must start with the characters "{open}" and end
-with the characters "{close}". The end characters "{close}" may not
-appear without the start characters "{open}" appearing first:
-"{open}...{close}".
-`,
     },
   })
 

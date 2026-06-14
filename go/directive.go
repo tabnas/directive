@@ -71,13 +71,15 @@ type DirectiveOptions struct {
 // Apply registers the Directive plugin on the given tabnas instance with
 // typed options. It is the convenience constructor mirroring the
 // TypeScript `j.use(Directive, options)` call; under the hood it forwards
-// the options to j.Use as the plugin option map. Returns the tabnas
-// instance for chaining.
+// the options to j.Use as the plugin option map. It returns the tabnas
+// instance (for chaining) together with any registration error — e.g. a
+// duplicate open token or a grammar build failure. Use MustApply if you
+// would rather a registration error panic.
 //
 // To register the raw plugin directly — e.g. from a JSON-driven config —
 // call j.Use(directive.Directive, opts) with the same option keys
 // ("name", "open", "close", "action", "rules", "custom").
-func Apply(j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas {
+func Apply(j *tabnas.Tabnas, opts DirectiveOptions) (*tabnas.Tabnas, error) {
 	pluginOpts := map[string]any{
 		"name":   opts.Name,
 		"open":   opts.Open,
@@ -90,7 +92,20 @@ func Apply(j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas {
 	if opts.Rules != nil {
 		pluginOpts["rules"] = opts.Rules
 	}
-	_ = j.Use(Directive, pluginOpts)
+	if err := j.Use(Directive, pluginOpts); err != nil {
+		return j, err
+	}
+	return j, nil
+}
+
+// MustApply is like Apply but panics if registration fails. It suits
+// setup code where a directive configuration is known to be valid and an
+// error would be unrecoverable.
+func MustApply(j *tabnas.Tabnas, opts DirectiveOptions) *tabnas.Tabnas {
+	j, err := Apply(j, opts)
+	if err != nil {
+		panic(err)
+	}
 	return j
 }
 
@@ -160,10 +175,13 @@ var Directive tabnas.Plugin = func(j *tabnas.Tabnas, opts map[string]any) error 
 		closeRules = resolveRules(defaults.Close)
 	}
 
-	// The open token must not already be registered.
+	// The open token must not already be registered. (The TypeScript
+	// plugin throws here; the idiomatic Go port returns an error, which
+	// j.Use propagates to the caller. MustApply turns it back into a
+	// panic for callers that want that.)
 	cfg := j.Config()
 	if _, exists := cfg.FixedTokens[open]; exists {
-		panic(fmt.Sprintf("Directive open token already in use: %s", open))
+		return fmt.Errorf("Directive open token already in use: %s", open)
 	}
 
 	// Register the open fixed token.

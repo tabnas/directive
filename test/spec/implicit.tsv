@@ -1,0 +1,18 @@
+# implicit.tsv — implicit (bracketless) lists inside the "adder"
+# directive (open="add<", close=">"). With a close token the directive
+# body permits implicit lists (n.dlist = 0), so `add<1, 2, 3>` builds the
+# list [1, 2, 3] before summing it. The close token ">" terminates the
+# implicit list and the directive together.
+# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+
+add<1, 2, 3>	6
+add<1, 2>	3
+add<1, 2, 3, 4>	10
+add<10, 20, 30>	60
+
+# implicit list nested inside the mini grammar's containers
+[add<1, 2>, add<3, 4>]	[3, 7]
+{x:add<1, 2, 3>}	{"x": 6}
+
+# explicit and implicit bodies agree
+add<[1, 2, 3]>	6

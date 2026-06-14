@@ -87,11 +87,12 @@ in sync when behaviour changes. Notable items:
 - `Rules` is a `map[string]*RuleMod` in Go (no comma-string shorthand);
   a non-`nil` `*RulesOption` is a complete override (`nil` = defaults,
   `&RulesOption{}` = no rules).
-- The dormant `<name>_close` error/hint templates are registered in TS
-  only (the Go engine's `SetOptions` re-applies plugins, so a plugin
-  cannot call it without re-entering).
+- Registration failures (duplicate open token, grammar build error) are
+  thrown in TS and returned as an `error` in Go (propagated by `j.Use` /
+  `Apply`; `MustApply` panics instead).
 - Go's `bc` hook walks the `Prev`-linked replacement chain to adopt the
-  final child node (a Go slice-reallocation workaround).
+  final child node (a Go slice-reallocation workaround); implicit-list
+  bodies in `test/spec/implicit.tsv` exercise it.
 
 ## Conventions
 
@@ -104,8 +105,9 @@ in sync when behaviour changes. Notable items:
 - Plugin registration follows the standard tabnas shape. TypeScript:
   `Directive` is a `Plugin` with `Directive.defaults`, registered via
   `j.use(Directive, options)`. Go: `Directive` is a `tabnas.Plugin`
-  value that reads named keys from the option map; `Apply(j, opts)` is
-  the typed convenience constructor that forwards them to `j.Use`.
+  value that reads named keys from the option map; `Apply(j, opts)`
+  (returns `error`) and `MustApply(j, opts)` (panics) are the typed
+  convenience constructors that forward them to `j.Use`.
 
 ## Documentation
 

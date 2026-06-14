@@ -140,6 +140,9 @@ describe('directive', () => {
 
     runSpec(j, 'adder.tsv')
 
+    // Implicit (bracketless) list bodies, e.g. add<1, 2, 3>.
+    runSpec(j, 'implicit.tsv')
+
     const k = j.use(Directive, {
       name: 'multiplier',
       open: 'mul<',

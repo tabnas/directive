@@ -42,6 +42,27 @@ func registerMiniGrammar(j *tabnas.Tabnas) {
 		}
 		rs.Close = []*tabnas.AltSpec{
 			{S: [][]tabnas.Tin{{tabnas.TinZZ}}},
+			// Implicit list: a standalone value followed by a comma starts
+			// a bracketless list. Only fires outside an elem/pair/ilist
+			// position (so explicit `[a, b]` and `{k: v}` are unaffected)
+			// and where implicit lists are permitted (n.dlist != 1, the
+			// counter the directive plugin sets to 1 to suppress them).
+			{
+				S: [][]tabnas.Tin{{tabnas.TinCA}},
+				B: 1,
+				C: func(r *tabnas.Rule, _ *tabnas.Context) bool {
+					return r.N["dlist"] != 1 &&
+						r.Parent != nil && r.Parent != tabnas.NoRule &&
+						r.Parent.Name != "elem" &&
+						r.Parent.Name != "pair" &&
+						r.Parent.Name != "ilist"
+				},
+				R: "ilist",
+				// Seed the list with the already-parsed scalar value.
+				A: func(r *tabnas.Rule, _ *tabnas.Context) {
+					r.Node = []any{r.Node}
+				},
+			},
 			{B: 1},
 		}
 	})
@@ -129,6 +150,27 @@ func registerMiniGrammar(j *tabnas.Tabnas) {
 		rs.Close = []*tabnas.AltSpec{
 			{S: [][]tabnas.Tin{{tabnas.TinCA}}, R: "elem"},
 			{S: [][]tabnas.Tin{{tabnas.TinCS}}, B: 1},
+		}
+	})
+
+	// ilist: bracketless list continuation. Created by replacing a val
+	// (so it inherits the seeded `[first]` node) and then absorbs `, value`
+	// pairs until something else closes it.
+	j.Rule("ilist", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+		push := func(r *tabnas.Rule, _ *tabnas.Context) {
+			if tabnas.IsUndefined(r.Child.Node) {
+				return
+			}
+			if s, ok := r.Node.([]any); ok {
+				r.Node = append(s, r.Child.Node)
+			}
+		}
+		rs.Open = []*tabnas.AltSpec{
+			{S: [][]tabnas.Tin{{tabnas.TinCA}}, P: "val"}, // consume comma, parse next value
+		}
+		rs.Close = []*tabnas.AltSpec{
+			{S: [][]tabnas.Tin{{tabnas.TinCA}}, B: 1, R: "ilist", A: push}, // more elements
+			{B: 1, A: push}, // final element
 		}
 	})
 }

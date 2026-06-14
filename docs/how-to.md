@@ -31,7 +31,7 @@ new Tabnas().use(hostGrammar).use(Directive, {
 **Go:**
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name:  "group",
     Open:  "(",
     Close: ")",
@@ -58,12 +58,13 @@ const j = new Tabnas().use(hostGrammar)
 **Go:**
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{Name: "foo", Open: "foo<", Close: ">", Action: fooAction})
-directive.Apply(j, directive.DirectiveOptions{Name: "bar", Open: "bar<", Close: ">", Action: barAction})
+directive.MustApply(j, directive.DirectiveOptions{Name: "foo", Open: "foo<", Close: ">", Action: fooAction})
+directive.MustApply(j, directive.DirectiveOptions{Name: "bar", Open: "bar<", Close: ">", Action: barAction})
 ```
 
 The open tokens (`foo<`, `bar<`) must still be unique — attempting to
-reuse an open token throws (TypeScript) / panics (Go).
+reuse an open token throws (TypeScript) or returns an error from
+`Apply` / `j.Use` (Go; `MustApply` panics).
 
 
 ## How to restrict where a directive is recognised
@@ -85,7 +86,7 @@ new Tabnas().use(hostGrammar).use(Directive, {
 **Go:**
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name: "elem-only",
     Open: "@",
     Rules: &directive.RulesOption{
@@ -149,7 +150,7 @@ closure that captures the value instead:
 
 ```go
 x := 42
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name: "constant",
     Open: "@",
     Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
@@ -190,7 +191,7 @@ new Tabnas().use(hostGrammar).use(Directive, {
 **Go:**
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name:   "subobj",
     Open:   "@",
     Action: /* … */,
@@ -249,7 +250,7 @@ created; its open token will then only match via rules you install in
 defaults" instead).
 
 ```go
-directive.Apply(j, directive.DirectiveOptions{
+directive.MustApply(j, directive.DirectiveOptions{
     Name:   "none",
     Open:   "@",
     Action: func(*tabnas.Rule, *tabnas.Context) {},
