@@ -123,3 +123,17 @@ The [`@tabnas/debug`](https://github.com/tabnas/debug) plugin adds a
 when a directive's alts aren't matching as expected. Every alt this
 plugin installs carries the `directive` group tag, so traces can be
 filtered to directive activity.
+
+It is a development-only diagnostic, not a dependency (the directive's
+only dependency is the parser engine). Vendor it for local use with
+`scripts/fetch-debug.sh` (run `scripts/fetch-parser.sh` first; the debug
+plugin builds against the same vendored engine). The script git-ignores
+its output under `vendor/` and links `@tabnas/debug` into
+`ts/node_modules` (with `--no-save`) so a diagnostic can:
+
+```ts
+import { Debug } from '@tabnas/debug'
+const j = makeMini().use(Directive, { /* … */ }).use(Debug, { trace: true })
+j.debug.describe()   // grammar/alt dump; Go: debug.Describe(j)
+```
+
