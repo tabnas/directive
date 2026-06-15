@@ -15,8 +15,8 @@
  *  convention the engine's grammar() applies.
  */
 
-import { Tabnas } from 'tabnas'
-import type { Plugin, Rule, Context } from 'tabnas'
+import { Tabnas } from '@tabnas/parser'
+import type { Plugin, Rule, Context } from '@tabnas/parser'
 
 export const mini: Plugin = (tn: Tabnas) => {
   tn.grammar({

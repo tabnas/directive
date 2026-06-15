@@ -1,4 +1,4 @@
-const { Tabnas } = require('tabnas')
+const { Tabnas } = require('@tabnas/parser')
 const { Debug } = require('@tabnas/debug')
 const { Directive } = require('..')
 

@@ -29,14 +29,14 @@ whatever host grammar provides the standard `val` / `list` / `map` /
 
 ## The dependency
 
-The **only** dependency is the **tabnas** parser engine (npm `tabnas`,
+The **only** dependency is the **tabnas** parser engine (npm `@tabnas/parser`,
 Go module `github.com/tabnas/parser/go`). The plugin source is written
 against it: it imports the plugin API types (`Rule`, `Context`, `Tin`,
 `Plugin`, `RuleSpec`, `AltSpec`, …) and registers tokens, rules and a
 declarative grammar spec via the instance API.
 
-- TypeScript: `import { Tabnas, Rule, Plugin, … } from 'tabnas'`;
-  `tabnas` is the peer dependency (`vendor/tabnas-parser/ts`).
+- TypeScript: `import { Tabnas, Rule, Plugin, … } from '@tabnas/parser'`;
+  `@tabnas/parser` is the peer dependency (`vendor/tabnas-parser/ts`).
 - Go: `import tabnas "github.com/tabnas/parser/go"`; a `go.mod` `replace`
   points the require at `vendor/tabnas-parser/go`.
 

@@ -28,7 +28,7 @@ instance that already has a grammar (here `hostGrammar`, which provides
 ### TypeScript
 
 ```ts
-import { Tabnas } from 'tabnas'
+import { Tabnas } from '@tabnas/parser'
 import { Directive } from '@tabnas/directive'
 
 const j = new Tabnas().use(hostGrammar).use(Directive, {

@@ -28,7 +28,7 @@ the [README](../README.md) for how the engine is wired from source
 during development.
 
 ```ts
-import { Tabnas } from 'tabnas'
+import { Tabnas } from '@tabnas/parser'
 import { Directive } from '@tabnas/directive'
 ```
 

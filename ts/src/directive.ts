@@ -9,7 +9,7 @@ import {
   Context,
   Token,
   Tin,
-} from 'tabnas'
+} from '@tabnas/parser'
 
 
 type DirectiveOptions = {

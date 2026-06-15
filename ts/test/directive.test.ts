@@ -5,7 +5,7 @@ import assert from 'node:assert'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { Rule } from 'tabnas'
+import type { Rule } from '@tabnas/parser'
 import { Directive } from '../dist/directive'
 import { makeMini } from './mini-grammar'
 
