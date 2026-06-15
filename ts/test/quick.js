@@ -1,7 +1,8 @@
-const { Jsonic, Debug } = require('@jsonic/jsonic-next')
+const { Tabnas } = require('tabnas')
+const { Debug } = require('@tabnas/debug')
 const { Directive } = require('..')
 
-// const j = Jsonic.make().use(Debug,{trace:true}).use(Directive, {
+// const j = Tabnas.make().use(Debug,{trace:true}).use(Directive, {
 //   name: 'constant',
 //   open: '@',
 //   action: (rule) => rule.node = (''+rule.child.node).toUpperCase()
@@ -33,7 +34,7 @@ const { Directive } = require('..')
 
 // console.log(j('@a,2'))
 
-// const j = Jsonic.make().use(Debug,{trace:true}).use(Directive, {
+// const j = Tabnas.make().use(Debug,{trace:true}).use(Directive, {
 //   name: 'constant',
 //   open: '@',
 //   rules: {
@@ -80,7 +81,7 @@ const { Directive } = require('..')
 // // console.log(j('x:1 @a'))
 // console.log(j('@a x:1'))
 
-// const j = Jsonic.make().use(Debug,{trace:true}).use(Directive, {
+// const j = Tabnas.make().use(Debug,{trace:true}).use(Directive, {
 //   name: 'adder',
 //   open: 'add<',
 //   close: '>',
@@ -101,7 +102,7 @@ const { Directive } = require('..')
 //   c: [2,3],
 // }
 
-// const j = Jsonic.make().use(Debug,{trace:true}).use(Directive, {
+// const j = Tabnas.make().use(Debug,{trace:true}).use(Directive, {
 //   name: 'constant',
 //   open: '@',
 //   rules: {
@@ -154,7 +155,7 @@ const { Directive } = require('..')
 
 // console.log(j('a:@[1]'))
 
-const j = Jsonic.make()
+const j = Tabnas.make()
   .use(Debug, { trace: true })
   .use(Directive, {
     name: 'annotate',
@@ -166,8 +167,8 @@ const j = Jsonic.make()
       // console.log('DA', rule.d, rule.name, rule.child.node, rule.parent.name)
       rule.parent.use.note = '<' + rule.child.node + '>'
     },
-    custom: (jsonic, { OPEN, name }) => {
-      jsonic
+    custom: (tabnas, { OPEN, name }) => {
+      tabnas
         .rule('annotate', (rs) => {
           rs.close([
             {
