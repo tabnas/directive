@@ -18,8 +18,8 @@
 import { Tabnas } from 'tabnas'
 import type { Plugin, Rule, Context } from 'tabnas'
 
-export const mini: Plugin = (am: Tabnas) => {
-  am.grammar({
+export const mini: Plugin = (tn: Tabnas) => {
+  tn.grammar({
     ref: {
       '@val-bo': (r: Rule) => (r.node = undefined),
       '@val-bc': (r: Rule, ctx: Context) => {

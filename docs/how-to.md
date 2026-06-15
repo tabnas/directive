@@ -177,8 +177,8 @@ new Tabnas().use(hostGrammar).use(Directive, {
   name: 'subobj',
   open: '@',
   action: /* … */,
-  custom: (am, { OPEN, name }) => {
-    am.rule('val', (rs) => {
+  custom: (tn, { OPEN, name }) => {
+    tn.rule('val', (rs) => {
       rs.open({
         s: [OPEN],
         c: (r) => 0 === r.d,
