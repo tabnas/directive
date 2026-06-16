@@ -40,6 +40,25 @@ const j = new Tabnas().use(hostGrammar).use(Directive, {
 j.parse('[@a, @b, 1]') // → ['A', 'B', 1]
 ```
 
+### Runnable example
+
+Using the `@tabnas/json` grammar as the host (it provides `val` / `list` /
+`map` / `pair`):
+
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { json } = require('@tabnas/json')
+const { Directive } = require('@tabnas/directive')
+
+const j = new Tabnas({ plugins: [json] }).use(Directive, {
+  name: 'upper',
+  open: '@',
+  action: (rule) => (rule.node = String(rule.child.node).toUpperCase()),
+})
+
+j.parse('@"x"')   // => 'X'
+```
+
 ### Go
 
 ```go
