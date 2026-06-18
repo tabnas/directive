@@ -34,13 +34,13 @@ import (
 	"strings"
 
 	tabnas "github.com/tabnas/parser/go"
-	directive "github.com/tabnas/directive/go"
+	tabnasdirective "github.com/tabnas/directive/go"
 )
 
 func main() {
 	j := tabnas.Make()
 	j.Use(hostGrammar) // your grammar: provides val / list / map / pair
-	directive.Apply(j, directive.DirectiveOptions{
+	tabnasdirective.Apply(j, tabnasdirective.DirectiveOptions{
 		Name: "upper",
 		Open: "@",
 		Action: func(r *tabnas.Rule, _ *tabnas.Context) {
