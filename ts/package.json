@@ -1,6 +1,6 @@
 {
   "name": "@tabnas/directive",
-  "version": "2.2.0",
+  "version": "0.2.0",
   "description": "Directive syntax plugin for the tabnas JSON parser.",
   "main": "dist/directive.js",
   "type": "commonjs",
@@ -43,7 +43,7 @@
     "typescript": "6.0.3"
   },
   "peerDependencies": {
-    "@tabnas/parser": ">=2"
+    "@tabnas/parser": "^0.2.0"
   },
   "engines": {
     "node": ">=24"
