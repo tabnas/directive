@@ -1,6 +1,6 @@
 /* Copyright (c) 2025 Richard Rodger and other contributors, MIT License */
 
-package directive
+package tabnasdirective
 
 import (
 	tabnas "github.com/tabnas/parser/go"
