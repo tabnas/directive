@@ -9,7 +9,14 @@ to transform the parsed body. This is the Go port of the canonical
 TypeScript implementation in [`../ts`](../ts); the TypeScript version is
 authoritative and this package tracks it. A few intentional differences
 (Go static typing, engine-API limits) are listed in
-[the reference](../docs/reference.md#typescript--go-differences).
+[the concepts doc](doc/concepts.md#differences-from-the-ts-version).
+
+## Documentation
+
+The four-quadrant Go docs live in [`doc/`](doc):
+[tutorial](doc/tutorial.md) · [how-to guide](doc/guide.md) ·
+[reference](doc/reference.md) · [concepts](doc/concepts.md). The
+canonical TypeScript docs are in [`../ts/doc/`](../ts/doc).
 
 The plugin's only dependency is the tabnas engine
 (`github.com/tabnas/parser/go`). It modifies host-grammar rules (`val`,

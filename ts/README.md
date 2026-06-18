@@ -13,37 +13,18 @@ and Go ports share the same API shape and test specs.
 
 ## Documentation
 
-The cross-language docs live in [`../docs/`](../docs): a
-[tutorial](../docs/tutorial.md), [how-to guides](../docs/how-to.md), a
-[reference](../docs/reference.md), and an [explanation](../docs/explanation.md)
-of how the plugin works.
+The four-quadrant TypeScript docs live in [`doc/`](doc):
+[tutorial](doc/tutorial.md) · [how-to guide](doc/guide.md) ·
+[reference](doc/reference.md) · [concepts](doc/concepts.md). The Go-port
+docs are in [`../go/doc/`](../go/doc).
 
 
 ## Quickstart
 
 The directive modifies host-grammar rules, so apply it to a `Tabnas`
-instance that already has a grammar (here `hostGrammar`, which provides
-`val` / `list` / `map` / `pair`).
-
-### TypeScript
-
-```ts
-import { Tabnas } from '@tabnas/parser'
-import { Directive } from '@tabnas/directive'
-
-const j = new Tabnas().use(hostGrammar).use(Directive, {
-  name: 'upper',
-  open: '@',
-  action: (rule) => (rule.node = String(rule.child.node).toUpperCase()),
-})
-
-j.parse('[@a, @b, 1]') // → ['A', 'B', 1]
-```
-
-### Runnable example
-
-Using the `@tabnas/json` grammar as the host (it provides `val` / `list` /
-`map` / `pair`):
+instance that already has a grammar that provides `val` / `list` / `map`
+/ `pair`. Here the host is [`@tabnas/json`](https://github.com/tabnas/json),
+which is why the input uses JSON syntax (quoted strings):
 
 ```js
 const { Tabnas } = require('@tabnas/parser')
@@ -56,35 +37,13 @@ const j = new Tabnas({ plugins: [json] }).use(Directive, {
   action: (rule) => (rule.node = String(rule.child.node).toUpperCase()),
 })
 
-j.parse('@"x"')   // => 'X'
-```
-
-### Go
-
-```go
-import (
-    "fmt"
-    "strings"
-
-    tabnas "github.com/tabnas/parser/go"
-    directive "github.com/tabnas/directive/go"
-)
-
-j := tabnas.Make()
-j.Use(hostGrammar) // provides val / list / map / pair
-directive.Apply(j, directive.DirectiveOptions{
-    Name: "upper",
-    Open: "@",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) {
-        r.Node = strings.ToUpper(fmt.Sprintf("%v", r.Child.Node))
-    },
-})
-
-j.Parse("[@a, @b, 1]") // → []any{"A", "B", float64(1)}
+j.parse('@"x"')              // => 'X'
+j.parse('[@"a", @"b", 1]')   // => ['A', 'B', 1]
 ```
 
 A minimal host grammar (used by the tests) lives in
-[`test/mini-grammar.ts`](test/mini-grammar.ts).
+[`test/mini-grammar.ts`](test/mini-grammar.ts); see the
+[tutorial](doc/tutorial.md) for a step-by-step walkthrough.
 
 
 ## Build and test
