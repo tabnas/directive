@@ -12,21 +12,46 @@ This repository contains:
 |---|---|
 | [`ts/`](ts/) | TypeScript / JavaScript implementation (`@tabnas/directive`). **Canonical.** |
 | [`go/`](go/) | Go port (`github.com/tabnas/directive/go`). Kept at parity with `ts/`. |
-| [`docs/`](docs/) | Cross-language documentation. |
 | [`test/spec/`](test/spec/) | Shared conformance fixtures, exercised by both runtimes. |
 
 The TypeScript implementation is the source of truth; the Go port
 mirrors its behaviour, options, defaults and test specs. A small set of
 intentional differences (Go static typing, engine-API limits) is
-recorded in [`docs/reference.md`](docs/reference.md#typescript--go-differences).
+recorded in
+[`go/doc/concepts.md`](go/doc/concepts.md#differences-from-the-ts-version).
+
+## Tiny example
+
+A directive is a token sequence that triggers custom parsing behaviour.
+Here `@` uppercases the following value (using `@tabnas/json` as the host
+grammar):
+
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { json } = require('@tabnas/json')
+const { Directive } = require('@tabnas/directive')
+
+const j = new Tabnas({ plugins: [json] }).use(Directive, {
+  name: 'upper',
+  open: '@',
+  action: (rule) => (rule.node = String(rule.child.node).toUpperCase()),
+})
+
+j.parse('[@"a", @"b", 1]')   // => ['A', 'B', 1]
+```
 
 ## Documentation
 
-Start with the [tutorial](docs/tutorial.md), reach for a
-[how-to guide](docs/how-to.md) when you have a specific task, look up
-options in the [reference](docs/reference.md), and read the
-[explanation](docs/explanation.md) to understand the grammar model.
-Per-language usage lives in [`ts/README.md`](ts/README.md) and
+The four-quadrant docs come in both languages.
+
+**TypeScript** (canonical) — [tutorial](ts/doc/tutorial.md) ·
+[how-to guide](ts/doc/guide.md) · [reference](ts/doc/reference.md) ·
+[concepts](ts/doc/concepts.md)
+
+**Go** — [tutorial](go/doc/tutorial.md) · [how-to guide](go/doc/guide.md)
+· [reference](go/doc/reference.md) · [concepts](go/doc/concepts.md)
+
+Per-language quickstarts live in [`ts/README.md`](ts/README.md) and
 [`go/README.md`](go/README.md).
 
 ## Build and test
