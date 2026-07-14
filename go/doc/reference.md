@@ -74,7 +74,7 @@ type DirectiveOptions struct {
 	Name   string
 	Open   string
 	Close  string
-	Action Action
+	Action any
 	Rules  *RulesOption
 	Custom CustomFunc
 }
@@ -85,7 +85,7 @@ type DirectiveOptions struct {
 | `Name`   | `string`       | yes      | Directive name. Also the parse-rule name and token-name suffix (`#OD_<Name>`, `#CD_<Name>`). |
 | `Open`   | `string`       | yes      | Character sequence that starts the directive. Must be unique per instance. |
 | `Close`  | `string`       | no       | Character sequence that ends the directive. Empty → open-only (consumes one value). |
-| `Action` | `Action`       | yes      | Fired when the directive body finishes. |
+| `Action` | `Action \| TokenAction \| string` | yes | Fired when the directive body finishes; mirrors TS `StateAction \| string`. See [`Action`](#action). |
 | `Rules`  | `*RulesOption` | no       | Which host rules detect the directive. `nil` → [defaults](#defaults); `&RulesOption{}` → no rules. |
 | `Custom` | `CustomFunc`   | no       | Callback run after setup, given the resolved tokens. |
 
@@ -94,6 +94,8 @@ type DirectiveOptions struct {
 
 ```go
 type Action func(rule *tabnas.Rule, ctx *tabnas.Context)
+
+type TokenAction func(rule *tabnas.Rule, ctx *tabnas.Context) any
 ```
 
 Called once the body has parsed. `rule.Child.Node` holds the parsed body
@@ -101,8 +103,17 @@ value (subject to how the host grammar propagates nodes). Assign
 `rule.Node` to set the directive's result. If `rule.Parent` is a `pair`,
 mutate `rule.Parent.Node` instead and leave `rule.Node` unset.
 
-Unlike TypeScript's `StateAction`, the Go `Action` returns nothing —
-there is no token-override return value.
+Three forms are accepted (matching TS `action: StateAction | string`):
+
+- `Action` (or a bare `func(rule, ctx)`) — the classic callback.
+- `TokenAction` (or a bare `func(rule, ctx) any`) — may return a
+  `*tabnas.Token`; a token with `Err` set halts the parse (TS: the `bc`
+  hook returns the token to the engine), other tokens are ignored.
+- `string` — a dotted path resolved on the parser options each time the
+  directive fires; the resolved value becomes `rule.Node`. The TS
+  options object is open, Go's `Options` struct is closed, so the path
+  resolves in the plugin-options namespace: `"custom.x"` reads
+  `j.PluginOptions("custom")["x"]`.
 
 
 ## `RulesOption`, `RuleMod`

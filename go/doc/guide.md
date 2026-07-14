@@ -130,21 +130,26 @@ The condition receives `(rule, ctx)` and returns a `bool` — the same
 `AltCond` shape the engine uses everywhere.
 
 
-## Read a value from options (no string-action form)
+## Read a value from options (string-action form)
 
-TypeScript's `action` accepts a dotted-path string that is resolved on
-the instance options at fire time. Go's `Action` is a typed function, so
-there is no string form — capture the value in a closure instead:
+Like TypeScript's `action: 'a.b.c'`, a string action resolves a
+dotted path on the parser options at fire time. The TS options object
+is open (arbitrary top-level keys), while Go's `Options` struct is
+closed, so the Go path resolves in the plugin-options namespace:
 
 ```go
-x := 42
 tabnasdirective.Apply(j, tabnasdirective.DirectiveOptions{
-	Name: "constant",
-	Open: "@",
-	Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
+	Name:   "constant",
+	Open:   "@",
+	Action: "custom.x",
 })
+j.SetPluginOptions("custom", map[string]any{"x": 42})
 // j.Parse("@y") -> 42
 ```
+
+Since resolution happens each time the directive fires, later
+`SetPluginOptions` calls are picked up. A closure capturing a value
+works just as well when the value is not option-driven.
 
 
 ## Run extra wiring after setup with `Custom`

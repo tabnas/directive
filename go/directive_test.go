@@ -284,6 +284,55 @@ func TestEdges(t *testing.T) {
 	}
 }
 
+// Mirrors ts test 'action-option-prop': a string action resolves a
+// dotted path on the parser options at directive-execution time. The Go
+// options struct is closed, so arbitrary option data lives in the
+// plugin-options namespace (TS: j.options({ custom: { x: 11 } })).
+func TestActionOptionProp(t *testing.T) {
+	j := makeMini()
+	mustApply(t, j, DirectiveOptions{
+		Name:   "constant",
+		Open:   "@",
+		Action: "custom.x",
+	})
+
+	// Set after registration: the path must resolve when the directive
+	// fires, not when the plugin is applied.
+	j.SetPluginOptions("custom", map[string]any{"x": float64(11)})
+
+	got, err := j.Parse("@y")
+	if err != nil {
+		t.Fatalf("@y: parse error: %v", err)
+	}
+	if got != float64(11) {
+		t.Fatalf("@y => %#v, want 11", got)
+	}
+}
+
+// Mirrors ts test 'action-returns-token': when the action returns a
+// token, the close hook propagates it. The returned token carries no
+// error, so parsing succeeds and the directive node is the empty map
+// seeded by the open hook.
+func TestActionReturnsToken(t *testing.T) {
+	j := makeMini()
+	mustApply(t, j, DirectiveOptions{
+		Name:  "tok",
+		Open:  "tok<",
+		Close: ">",
+		Action: func(_ *tabnas.Rule, ctx *tabnas.Context) any {
+			return ctx.T0
+		},
+	})
+
+	got, err := j.Parse("tok<a>")
+	if err != nil {
+		t.Fatalf("tok<a>: parse error: %v", err)
+	}
+	if !reflect.DeepEqual(got, map[string]any{}) {
+		t.Fatalf("tok<a> => %#v, want empty map", got)
+	}
+}
+
 func TestResolveRulesNilEntry(t *testing.T) {
 	// A nil RuleMod entry is normalized to an empty &RuleMod{}.
 	got := resolveRules(map[string]*RuleMod{"val": nil})

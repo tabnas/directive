@@ -155,8 +155,8 @@ they stem from Go's static typing and engine-API shape, not from drift:
 | **Constructor** | `j.use(Directive, options)` (chainable, throws on error). | `tabnasdirective.Apply(j, opts)` returns `(*Tabnas, error)`; or `j.Use(Directive, map[string]any{...})` with named keys. |
 | **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string slice, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. |
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (an omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. |
-| **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | `Action` is a typed func; capture the value in a closure instead. |
-| **Action return value** | A `StateAction` may return a `Token` to override the next token. | `Action` returns nothing. |
+| **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while the Go `Options` struct is closed, so the path resolves in the plugin-options namespace: `"custom.x"` reads `j.PluginOptions("custom")["x"]` at fire time. |
+| **Action return value** | A `StateAction` may return a `Token`; an error token halts the parse. | Same via the `TokenAction` form (`func(r, ctx) any`); a returned `*tabnas.Token` with `Err` set halts the parse, other tokens are ignored. |
 | **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. |
 | **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `../test/spec/implicit.tsv`. |
 

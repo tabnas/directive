@@ -50,8 +50,12 @@ Keep behaviour and option semantics aligned with `../ts`. The Go engine
 and Go's type system force a few intentional differences (all recorded
 in `../docs/reference.md`):
 
-- `Action` is `func(rule *tabnas.Rule, ctx *tabnas.Context)` — no
-  dotted-path string form, no `Token` return.
+- The `"action"` option mirrors TS `StateAction | string`: it accepts
+  `Action` (`func(rule, ctx)`), `TokenAction` (`func(rule, ctx) any` — a
+  returned `*tabnas.Token` with `Err` set halts the parse), or a
+  dotted-path string resolved at fire time in the plugin-options
+  namespace (`"custom.x"` → `j.PluginOptions("custom")["x"]`; the TS
+  options object is open, Go's `Options` struct is not).
 - `Rules` is `*RulesOption` with `map[string]*RuleMod` fields: `nil`
   uses defaults, `&RulesOption{}` modifies no rules.
 - There are no `<name>_close` error/hint templates: they were dormant

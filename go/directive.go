@@ -4,6 +4,7 @@ package tabnasdirective
 
 import (
 	"fmt"
+	"strings"
 
 	tabnas "github.com/tabnas/parser/go"
 )
@@ -15,6 +16,13 @@ const Version = "0.2.0"
 // contains the parsed content between open (and optional close) tokens.
 // Set rule.Node to the directive's result value.
 type Action func(rule *tabnas.Rule, ctx *tabnas.Context)
+
+// TokenAction is an Action variant that may return a value. When the
+// returned value is a *tabnas.Token, the directive's before-close hook
+// propagates it exactly as the TypeScript plugin does: an error token
+// (Err set) halts the parse with that token; any other token is passed
+// through and otherwise ignored. Non-token return values are discarded.
+type TokenAction func(rule *tabnas.Rule, ctx *tabnas.Context) any
 
 // RuleMod configures how a directive integrates with an existing grammar rule.
 type RuleMod struct {
@@ -57,7 +65,23 @@ type DirectiveOptions struct {
 	Close string
 
 	// Action is called when the directive content has been parsed.
-	Action Action
+	// Mirroring the TypeScript `action: StateAction | string` option it
+	// accepts several forms:
+	//
+	//	Action / func(*tabnas.Rule, *tabnas.Context)
+	//	    — classic action; set rule.Node to the result value.
+	//	TokenAction / func(*tabnas.Rule, *tabnas.Context) any
+	//	    — action that may return a *tabnas.Token to propagate from
+	//	      the before-close hook (see TokenAction).
+	//	string
+	//	    — a dot-path resolved against the parser options at
+	//	      directive-execution time; the resolved value becomes the
+	//	      directive's node. In TypeScript the options object is open,
+	//	      so the path starts at its top level; the Go options struct
+	//	      is closed, so the path is resolved in the plugin-options
+	//	      namespace (TS options.plugin): "custom.x" reads
+	//	      j.PluginOptions("custom")["x"].
+	Action any
 
 	// Rules controls which existing grammar rules are modified.
 	// nil means use defaults: open="val", close="list,elem,map,pair".
@@ -113,6 +137,60 @@ func defaultRules() *RulesOption {
 	}
 }
 
+// resolveAction normalizes the polymorphic "action" option (see
+// DirectiveOptions.Action) into a single TokenAction. A string is
+// resolved as a dot-path against the parser options at
+// directive-execution time (TS: `rule.node = tabnas.util.prop(
+// tabnas.options, path)`); func forms are wrapped as needed. An absent
+// or unrecognized value yields nil (no action).
+func resolveAction(j *tabnas.Tabnas, opt any) TokenAction {
+	switch a := opt.(type) {
+	case string:
+		if a == "" {
+			return nil
+		}
+		path := a
+		return func(r *tabnas.Rule, ctx *tabnas.Context) any {
+			r.Node = optionProp(j, path)
+			return nil
+		}
+	case Action:
+		return func(r *tabnas.Rule, ctx *tabnas.Context) any {
+			a(r, ctx)
+			return nil
+		}
+	case func(*tabnas.Rule, *tabnas.Context):
+		return func(r *tabnas.Rule, ctx *tabnas.Context) any {
+			a(r, ctx)
+			return nil
+		}
+	case TokenAction:
+		return a
+	case func(*tabnas.Rule, *tabnas.Context) any:
+		return a
+	}
+	return nil
+}
+
+// optionProp resolves a dot-path within the parser's plugin-options
+// namespace (the Go home for arbitrary option data; the TS options
+// object is open, so TS resolves from its top level). The lookup happens
+// at call time, so options set after plugin registration are seen —
+// matching the TS closure over `tabnas.options`. Missing segments
+// resolve to nil.
+func optionProp(j *tabnas.Tabnas, path string) any {
+	parts := strings.Split(path, ".")
+	var cur any = j.PluginOptions(parts[0])
+	for _, p := range parts[1:] {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return nil
+		}
+		cur = m[p]
+	}
+	return cur
+}
+
 // resolveRules normalizes a rules map, ensuring no nil entries.
 func resolveRules(rules map[string]*RuleMod) map[string]*RuleMod {
 	if rules == nil {
@@ -138,7 +216,8 @@ func resolveRules(rules map[string]*RuleMod) map[string]*RuleMod {
 //	"name"   string      — directive/rule name (required)
 //	"open"   string      — open token source (required)
 //	"close"  string      — optional close token source
-//	"action" Action      — content transform callback
+//	"action" Action | TokenAction | string — content transform callback
+//	         (all forms accepted by DirectiveOptions.Action)
 //	"rules"  *RulesOption — rules to modify; omit for defaults
 //	"custom" CustomFunc   — extra setup callback
 //
@@ -148,7 +227,7 @@ var Directive tabnas.Plugin = func(j *tabnas.Tabnas, opts map[string]any) error 
 	name, _ := opts["name"].(string)
 	open, _ := opts["open"].(string)
 	close_, _ := opts["close"].(string)
-	action, _ := opts["action"].(Action)
+	action := resolveAction(j, opts["action"])
 	custom, _ := opts["custom"].(CustomFunc)
 	hasClose := close_ != ""
 
@@ -220,7 +299,15 @@ var Directive tabnas.Plugin = func(j *tabnas.Tabnas, opts map[string]any) error 
 				}
 			}
 			if action != nil {
-				action(r, ctx)
+				out := action(r, ctx)
+				// An action may return a token (TS: `if (out?.isToken)
+				// return out` in the bc hook). The TS engine then halts
+				// the parse only when the token carries an error code;
+				// mirror that by setting ctx.ParseErr for error tokens
+				// and ignoring plain tokens.
+				if tkn, ok := out.(*tabnas.Token); ok && tkn != nil && tkn.Err != "" {
+					ctx.ParseErr = tkn
+				}
 			}
 		},
 	)
