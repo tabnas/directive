@@ -1,5 +1,12 @@
 # @tabnas/directive
 
+<!-- tabnas-badges -->
+[![npm](https://tabnas.github.io/status/badges/directive-npm.svg)](https://www.npmjs.com/package/@tabnas/directive)
+[![CI](https://github.com/tabnas/directive/actions/workflows/ci.yml/badge.svg)](https://github.com/tabnas/directive/actions/workflows/ci.yml)
+[![go](https://tabnas.github.io/status/badges/directive-go.svg)](https://pkg.go.dev/github.com/tabnas/directive/go)
+[![tabnas standard](https://tabnas.github.io/status/badges/directive-standard.svg)](https://tabnas.github.io/status/)
+<!-- /tabnas-badges -->
+
 Directive syntax for the [tabnas](https://github.com/tabnas/parser)
 parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
 triggers custom parsing behaviour. It is a plugin for the tabnas parser
