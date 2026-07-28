@@ -182,7 +182,10 @@ func optionProp(j *tabnas.Tabnas, path string) any {
 	parts := strings.Split(path, ".")
 	var cur any = j.PluginOptions(parts[0])
 	for _, p := range parts[1:] {
-		m, ok := cur.(map[string]any)
+		// A nested option value may be a parser *OrderedMap (e.g. plugin
+		// options sourced from parsed config) as well as a plain
+		// map[string]any; AsStringMap unwraps either for value access.
+		m, ok := tabnas.AsStringMap(cur)
 		if !ok {
 			return nil
 		}
