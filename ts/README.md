@@ -8,7 +8,7 @@ standard `val` / `list` / `map` / `pair` rules. TypeScript (canonical)
 and Go ports share the same API shape and test specs.
 
 [![npm version](https://img.shields.io/npm/v/@tabnas/directive.svg)](https://npmjs.com/package/@tabnas/directive)
-[![build](https://github.com/tabnas/directive/actions/workflows/build.yml/badge.svg)](https://github.com/tabnas/directive/actions/workflows/build.yml)
+[![CI](https://github.com/tabnas/directive/actions/workflows/ci.yml/badge.svg)](https://github.com/tabnas/directive/actions/workflows/ci.yml)
 
 
 ## Documentation

@@ -43,10 +43,13 @@ Both runtimes consume the engine as a **sibling checkout** (the standard
 tabnas development model, until `tabnas/parser` publishes tagged
 packages):
 
-- TypeScript: `"@tabnas/parser": ">=2"` is the **peerDependency**, mirrored
-  as `"@tabnas/parser": "file:../../parser/ts"` in `devDependencies` so
-  local builds resolve it. (`@tabnas/debug` and `@tabnas/railroad` are
-  also `file:` **devDependencies** — see below.) `engines.node` is `>=24`.
+- TypeScript: `"@tabnas/parser": ">=0"` is the **peerDependency**, mirrored
+  as `"@tabnas/parser": "*"` in `devDependencies` so local builds resolve
+  it. The `*` specifiers are satisfied by the `node_modules/@tabnas/*`
+  symlinks that `admin/scripts/link.sh` wires to the sibling checkouts —
+  do not `npm ci` or delete `node_modules`, which would break them.
+  (`@tabnas/debug` and `@tabnas/railroad` are also `*` **devDependencies**
+  — see below.) `engines.node` is `>=24`.
 - Go: `go/go.mod` has `replace github.com/tabnas/parser/go =>
   ../vendor/tabnas-parser/go`, and `vendor/tabnas-parser` is a symlink to
   the sibling `../parser`. The module is **vendor-replaced and excluded
@@ -98,8 +101,17 @@ points at.
 - **Default targets.** `Directive.defaults.rules` is `{ open: 'val',
   close: 'list,elem,map,pair' }`: by default a directive operates where
   `val`s occur, and (when it has a `close` token) closes inside the
-  container rules. An absent `rules` key uses these defaults; a present
-  `rules` (even empty) is honoured verbatim.
+  container rules. In **TS** these defaults are *deep-merged* into
+  whatever `rules` you pass, so a partial `rules` keeps the default of the
+  direction it omits, and `rules: {}` is indistinguishable from an absent
+  `rules`. Only an explicit **`rules: null`** modifies no host rules
+  (which leaves the open token unrecognised). **Go** cannot express that
+  merge over a `*RulesOption` and instead treats any non-`nil` value as a
+  complete override — `nil` selects the defaults, `&RulesOption{}`
+  modifies no rules. This is an intentional divergence, tabulated in
+  `docs/reference.md`; `ts/test/directive.test.ts`
+  (`rules-defaults-merge`, `edges`) and `go/directive_test.go`
+  (`TestEdges`) pin the two behaviours.
 - **Tokens.** `open` becomes the fixed token `#OD_<name>`; `close` (if
   given and not already a fixed token) becomes `#CD_<name>`. The **open
   token must be unique** — re-registering an existing fixed token throws
@@ -148,9 +160,11 @@ TS tests: `directive.test.ts` (spec-driven), `doc-examples.test.ts`
 ## @tabnas/debug and @tabnas/railroad (dev-only)
 
 Neither is a runtime dependency — the directive's only dependency is the
-engine — but both are `file:` **devDependencies** in `ts/package.json`:
+engine — but both are `"*"` **devDependencies** in `ts/package.json`,
+resolved through the `node_modules/@tabnas/*` symlinks that
+`admin/scripts/link.sh` points at the sibling checkouts:
 
-- **`@tabnas/debug`** (`file:../../debug/ts`) is the diagnostic tool for
+- **`@tabnas/debug`** is the diagnostic tool for
   this plugin: `j.debug.describe()` dumps the grammar/alts and
   `j.debug.model()` returns a structured grammar model.
   `ts/test/debug.test.ts` composes `makeMini().use(Directive,
@@ -160,7 +174,7 @@ engine — but both are `file:` **devDependencies** in `ts/package.json`:
   (`['mini','Directive','Debug']`). `scripts/fetch-debug.sh` vendors debug
   for local use when you don't have a sibling checkout (run
   `fetch-parser.sh` first).
-- **`@tabnas/railroad`** (`file:../../railroad/ts`) is the railroad/syntax
+- **`@tabnas/railroad`** is the railroad/syntax
   diagram generator, available as dev-only tooling for inspecting a host
   grammar with the directive applied. This repo ships no committed diagram
   (the directive has no grammar of its own — it modifies whatever host
@@ -169,19 +183,26 @@ engine — but both are `file:` **devDependencies** in `ts/package.json`:
 ## Publishing & versioning
 
 - TS: `make publish-ts` runs the tests then `npm publish` at the current
-  `ts/package.json` version (`2.2.0`).
+  `ts/package.json` version (`0.4.1`).
 - Go: `make publish-go V=x.y.z` seds the top-level `const Version` in
-  `go/directive.go` (currently `0.1.4`), commits, tags `go/vX.Y.Z`, pushes,
+  `go/directive.go` (currently `0.4.1`), commits, tags `go/vX.Y.Z`, pushes,
   and (if `gh` is present) cuts a GitHub release. `make tags-go` lists the
   Go tags newest-first.
 
 ## CI
 
-`.github/workflows/build.yml` uses the **sibling-checkout** strategy
-across `ubuntu` / `windows` / `macos` (Node 24): it sets
+`.github/workflows/ci.yml` is a thin **staged caller** (it replaced the
+old in-repo `build.yml`): it delegates to the org-standard reusable
+workflow `tabnas/.github/.github/workflows/polyglot-ci.yml@main`, passing
+`deps: "parser debug json abnf railroad"` and
+`build-order: "parser debug json abnf directive railroad"`. That reusable
+workflow keeps the **sibling-checkout** strategy — it sets
 `core.autocrlf=false` (CRLF corrupts `.tsv` fixtures), clones the
-transitive `@tabnas` closure (`parser debug json abnf railroad`) into
-sibling dirs, `npm i && npm run build`s each (then this repo) in order,
-and runs `npm test` from `directive/ts`. The current workflow exercises
-only the **TypeScript** suite; build/test Go locally with `make test-go`
-(`GOWORK=off`).
+transitive `@tabnas` closure into sibling dirs, `npm i && npm run build`s
+each in order, then runs the `ts/` suite on `ubuntu` / `windows` /
+`macos` (Node 24). It **also runs the Go suite** (`go build ./...` +
+`go test -v ./...` on `ubuntu` / `macos`): `run-ts` and `run-go` both
+default to `true` and this repo overrides neither. `.github/workflows/release.yml`
+handles releases. Note CI builds its own `go.work` excluding
+vendor-replaced modules, whereas locally this module is vendored and Go
+runs with `GOWORK=off` (the Makefile sets it).
