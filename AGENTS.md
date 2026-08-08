@@ -184,7 +184,7 @@ resolved through the `node_modules/@tabnas/*` symlinks that
 
 - TS: `make publish-ts` runs the tests then `npm publish` at the current
   `ts/package.json` version.
-- Go: `make publish-go V=x.y.z` seds the top-level `const Version` in
+- Go: `make publish-go V=x.y.z` seds the top-level `const VERSION` in
   `go/directive.go`, commits, tags `go/vX.Y.Z`, pushes,
   and (if `gh` is present) cuts a GitHub release. `make tags-go` lists the
   Go tags newest-first.

@@ -23,7 +23,9 @@ import (
 )
 ```
 
-`tabnasdirective.Version` is the current version string.
+`tabnasdirective.VERSION` is the current version string. It always equals
+`ts/package.json` "version" — `TestVersionMatchesPackageJSON` fails the build
+if the two drift.
 
 
 ## `Apply`
