@@ -9,7 +9,7 @@ import (
 	tabnas "github.com/tabnas/parser/go"
 )
 
-const Version = "0.4.1"
+const Version = "0.4.2"
 
 // Action is called when a directive is processed.
 // It receives the directive rule and parse context. The rule's Child.Node
