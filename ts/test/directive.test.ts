@@ -197,6 +197,42 @@ describe('directive', () => {
   })
 
 
+  test('rules-defaults-merge', () => {
+    // The plugin defaults (open:'val', close:'list,elem,map,pair') are
+    // deep-merged into a partial `rules` by the engine's plugin-defaults
+    // mechanism, so an omitted direction keeps its default. Only an
+    // explicit `rules: null` disables rule modification (see 'edges').
+    // This is the TS-canonical semantics; Go treats a non-nil
+    // *RulesOption as a complete override (docs/reference.md).
+    const mk = (rules?: any) => {
+      const opts: any = {
+        name: 'mrg',
+        open: 'mrg<',
+        close: '>',
+        action: (rule: Rule) => (rule.node = 'MRG'),
+      }
+      if (undefined !== rules) opts.rules = rules
+      return makeMini().use(Directive, opts)
+    }
+
+    // Baseline: an absent `rules` uses both defaults. The close-direction
+    // default is what lets '>' terminate a list opened inside the directive.
+    expect(mk().parse('[mrg<1>]')).equal(['MRG'])
+    expect(mk().parse('mrg<[1, 2>')).equal('MRG')
+
+    // An empty `rules` object is NOT "modify no rules": it merges with the
+    // defaults, so it behaves exactly like an absent `rules`.
+    expect(mk({}).parse('[mrg<1>]')).equal(['MRG'])
+    expect(mk({}).parse('mrg<[1, 2>')).equal('MRG')
+
+    // A partial `rules` keeps the default of the direction it omits:
+    // supplying only `open` retains the close-rule defaults, so the
+    // boundary close still works.
+    expect(mk({ open: 'val' }).parse('[mrg<1>]')).equal(['MRG'])
+    expect(mk({ open: 'val' }).parse('mrg<[1, 2>')).equal('MRG')
+  })
+
+
   test('action-option-prop', () => {
     // A string action resolves a dotted path on the instance options.
     const j = makeMini().use(Directive, {

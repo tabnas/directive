@@ -64,21 +64,28 @@ Per-language quickstarts live in [`ts/README.md`](ts/README.md) and
 ## Build and test
 
 The only dependency is the `tabnas` parser engine, which is not published
-to a registry, so both implementations consume it from source.
-`scripts/fetch-parser.sh` downloads its GitHub `main` branch over HTTPS
-into `vendor/` (git-ignored) and builds the TypeScript engine. The tests
+to a registry, so both implementations consume it from source — normally
+as a **sibling checkout** of `https://github.com/tabnas/parser` (built
+first with `cd parser/ts && npm install && npm run build`), which the Go
+module reaches through the `vendor/tabnas-parser` symlink. The tests
 bring their own small grammar ([`ts/test/mini-grammar.ts`](ts/test/mini-grammar.ts),
 [`go/mini_grammar_test.go`](go/mini_grammar_test.go)) — just enough
-structure (scalars, explicit lists and maps) to exercise the plugin. The
-Makefile runs the fetch for you:
+structure (scalars, explicit lists and maps) to exercise the plugin.
+
+The Makefile does **not** fetch; it assumes the engine is already in
+place:
 
 ```bash
-make build   # fetch engine, build both implementations
-make test    # fetch engine, build + test both
+make build   # build both implementations
+make test    # test both implementations
 ```
 
-Targeted: `make test-ts`, `make test-go` (each fetches the engine first).
-Pin a different engine ref with `TABNAS_PARSER_REF`.
+Targeted: `make test-ts`, `make test-go`.
+
+If you cannot keep a sibling checkout, run `scripts/fetch-parser.sh`
+first — it downloads the engine's GitHub `main` branch over HTTPS into
+`vendor/` (git-ignored) and builds the TypeScript engine. Pin a different
+engine ref with `TABNAS_PARSER_REF`.
 
 Contributors and AI agents: see [`AGENTS.md`](AGENTS.md) for repository
 conventions and the parity rules.
