@@ -1,7 +1,7 @@
 # close-foo-bar.tsv — after both "foo" (foo<...>) and "bar" (bar<...>)
 # directives are registered, sharing the same close token ">".
 # foo<...> → "FOO", bar<...> → "BAR".
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 foo<a>	"FOO"
 bar<a>	"BAR"

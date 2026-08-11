@@ -3,121 +3,44 @@
 package tabnasdirective
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
 	tabnas "github.com/tabnas/parser/go"
+	support "github.com/tabnas/support/go"
 )
 
-// --- TSV spec loader ---
-// Format:
-//   <input>\t<expected-json>
-//   <input>\t!error <regex>
-// Blank lines and lines starting with # are ignored.
-
-type specCase struct {
-	Input    string
-	Expected string
-}
-
-func loadSpec(t *testing.T, name string) []specCase {
-	t.Helper()
-	p := filepath.Join("..", "test", "spec", name)
-	f, err := os.Open(p)
-	if err != nil {
-		t.Fatalf("open %s: %v", p, err)
-	}
-	defer f.Close()
-
-	var cases []specCase
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-	for scanner.Scan() {
-		line := strings.TrimSuffix(scanner.Text(), "\r")
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		i := strings.Index(line, "\t")
-		if i < 0 {
-			continue
-		}
-		cases = append(cases, specCase{
-			Input:    line[:i],
-			Expected: line[i+1:],
-		})
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatalf("scan %s: %v", p, err)
-	}
-	return cases
-}
-
-// normalizeSpec recurses through the expected tree; numbers from
-// encoding/json are float64, matching the parser's number representation.
-func normalizeSpec(v any) any {
-	switch x := v.(type) {
-	case map[string]any:
-		out := make(map[string]any, len(x))
-		for k, vv := range x {
-			out[k] = normalizeSpec(vv)
-		}
-		return out
-	case []any:
-		out := make([]any, len(x))
-		for i, vv := range x {
-			out[i] = normalizeSpec(vv)
-		}
-		return out
-	}
-	return v
-}
+// --- TSV spec runner ---
+//
+// The fixtures live at the repo root in `test/spec/*.tsv` and are read by
+// github.com/tabnas/support/go, whose TypeScript half
+// ts/test/directive.test.ts uses to run the SAME files — so the two
+// implementations cannot drift without one going red, and neither can the
+// two loaders.
+//
+// A row is <input>\t<expected-json>, or <input>\tERROR:<code> for input
+// that must be rejected. These files have no header line and no opts
+// column: what varies per case is the DIRECTIVE, and a directive is a
+// function, so each test builds its own parser and hands it here.
 
 func runSpec(t *testing.T, j *tabnas.Tabnas, name string) {
 	t.Helper()
-	cases := loadSpec(t, name)
-	for _, c := range cases {
-		if strings.HasPrefix(c.Expected, "!error ") {
-			pattern := c.Expected[len("!error "):]
-			re, err := regexp.Compile(pattern)
-			if err != nil {
-				t.Errorf("%q: bad regex %q: %v", c.Input, pattern, err)
-				continue
-			}
-			_, err = j.Parse(c.Input)
-			if err == nil {
-				t.Errorf("%q: expected error matching %q, got nil", c.Input, pattern)
-				continue
-			}
-			if !re.MatchString(err.Error()) {
-				t.Errorf("%q: error %q does not match %q",
-					c.Input, err.Error(), pattern)
-			}
-			continue
-		}
 
-		var want any
-		if err := json.Unmarshal([]byte(c.Expected), &want); err != nil {
-			t.Errorf("%q: bad expected JSON %q: %v", c.Input, c.Expected, err)
-			continue
-		}
-		want = normalizeSpec(want)
-
-		got, err := j.Parse(c.Input)
-		if err != nil {
-			t.Errorf("%q: parse error: %v", c.Input, err)
-			continue
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("%q:\n  got:  %#v\n  want: %#v", c.Input, got, want)
-		}
+	dir, err := support.FindSpecDir("")
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	support.Runner{
+		Parse: j.Parse,
+
+		// Header false — the first line of these fixtures is a comment,
+		// not a header, and the columns are positional.
+		Load: &support.Options{Header: support.Bool(false)},
+	}.File(t, filepath.Join(dir, name))
 }
 
 // mustApply registers a directive and fails the test on error. Setup

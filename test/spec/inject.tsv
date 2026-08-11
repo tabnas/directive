@@ -2,7 +2,7 @@
 # test grammar, with rules.open = "val,pair" and a custom action.
 # @<key> looks up SRC[key]; at a pair position the looked-up map is
 # merged into the surrounding map. SRC = {a:"A", b:{b:1}, c:[2,3]}.
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 # --- value position: unknown key → null ---
 {x:@z}	{"x": null}

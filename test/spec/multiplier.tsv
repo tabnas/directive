@@ -1,7 +1,7 @@
 # multiplier.tsv — the "multiplier" directive (open="mul<", close=">")
 # over the mini test grammar. Action: multiplies the numbers in the list
 # body; an empty body yields 0. mul<[2, 3]> → 6.
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 mul<[2, 3]>	6
 mul<[2, 3, 4]>	24

@@ -2,10 +2,10 @@
 
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
-import fs from 'node:fs'
 import path from 'node:path'
 
 import type { Rule } from '@tabnas/parser'
+import { findSpecDir, makeRunner } from '@tabnas/support'
 import { Directive } from '../dist/directive'
 import { makeMini } from './mini-grammar'
 
@@ -27,49 +27,28 @@ const expect = (actual: any) => ({
 })
 
 
-// --- TSV spec loader ---
-// Format:
-//   <input>\t<expected-json>
-//   <input>\t!error <regex>
-// Blank lines and lines starting with # are ignored.
+// --- TSV spec runner ---
+//
+// The fixtures live at the repo root in `test/spec/*.tsv` and are read by
+// @tabnas/support, whose Go half `go/directive_test.go` uses to run the
+// SAME files — so the two implementations cannot drift without one going
+// red, and neither can the two loaders.
+//
+// A row is `<input>\t<expected-json>`, or `<input>\tERROR:<code>` for
+// input that must be rejected. These files have no header line and no
+// `opts` column: what varies per case is the DIRECTIVE, and a directive is
+// a function, so each test builds its own parser and hands it here.
 
-type SpecCase = { input: string; expected: string }
+const SPEC = findSpecDir(__dirname)
 
-const loadSpec = (name: string): SpecCase[] => {
-  const text = fs.readFileSync(
-    path.join(__dirname, '..', '..', 'test', 'spec', name),
-    'utf8',
-  )
-  const cases: SpecCase[] = []
-  for (const raw of text.split('\n')) {
-    const line = raw.replace(/\r$/, '')
-    if (line.length === 0 || line.startsWith('#')) continue
-    const i = line.indexOf('\t')
-    if (i < 0) continue
-    cases.push({ input: line.slice(0, i), expected: line.slice(i + 1) })
-  }
-  return cases
-}
+const runSpec = (j: { parse: (s: string) => any }, name: string) =>
+  makeRunner({
+    parse: (input) => j.parse(input),
 
-const runSpec = (j: { parse: (s: string) => any }, name: string) => {
-  for (const { input, expected } of loadSpec(name)) {
-    if (expected.startsWith('!error ')) {
-      const pattern = new RegExp(expected.slice('!error '.length))
-      assert.throws(
-        () => j.parse(input),
-        pattern,
-        `input: ${JSON.stringify(input)}`,
-      )
-    } else {
-      const want = JSON.parse(expected)
-      assert.deepStrictEqual(
-        normalize(j.parse(input)),
-        normalize(want),
-        `input: ${JSON.stringify(input)}`,
-      )
-    }
-  }
-}
+    // `header: false` — the first line of these fixtures is a comment, not
+    // a header, and the columns are positional.
+    spec: { header: false },
+  }).file(path.join(SPEC, name))
 
 
 describe('directive', () => {

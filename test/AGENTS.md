@@ -11,27 +11,49 @@ is `#` are skipped — each file opens with a comment block describing the
 directive it exercises.
 
     <input>	<expected-json>
-    <input>	!error <regex>
+    <input>	ERROR:<code>
 
-Both loaders split at the **first** tab only, so a tab inside `expected` is
-kept. `expected` is either a JSON value (the parse result) or `!error `
-followed by a regular expression the error message must match.
+`expected` is either a JSON value (the parse result) or `ERROR:` followed
+by the error's CODE, compared exactly. It used to be `!error ` followed by
+a regular expression matched against the message — every such row said
+`!error unexpected`, and `unexpected` turns out to be the code the engine
+actually answers, so the rows now pin the code and are read by the same
+`ERROR:` contract as every other tabnas fixture.
 
-**The `input` column is used verbatim.** Neither loader decodes escape
-sequences, so `\n` in a fixture reaches the parser as backslash-then-n, not a
-newline. A case that needs a real control character cannot be written here
-today; add it as an in-language test instead, or teach *both* loaders the
-same decoding first.
+Escapes are the shared codec's: `\n`, `\r`, `\t` and `\\` are decoded in
+the `input` column, and every other backslash sequence survives verbatim.
+Both loaders used to decode nothing at all, so a case needing a real
+control character could not be written; it can now. No fixture cell
+changes meaning — none of them contains a backslash.
+
+Rows are split on every tab, and the columns are positional (these files
+have no header line — each opens with a comment block describing the
+directive it exercises). No row has a tab inside `expected`; one that did
+would now be a third column rather than part of the second.
 
 A trailing `\r` is stripped, so the files work with either line ending.
 
 ## Who runs what
 
-- TypeScript: `ts/test/directive.test.ts` (`loadSpec`).
-- Go: `go/directive_test.go` (`loadSpec`).
+- TypeScript: `ts/test/directive.test.ts` — `runSpec(j, name)`, a
+  `makeRunner(...)` over the file.
+- Go: `go/directive_test.go` — `runSpec(t, j, name)`, a
+  `support.Runner{...}` over the file.
 
-Both name the same files. A fixture only one runtime runs proves nothing, so
-wire a new file into both.
+Both are a handful of lines. Everything else — finding `test/spec`,
+reading the file, decoding escapes, the `ERROR:` contract, the comparison,
+the `<file>:<line>` in a failure message — comes from
+[`@tabnas/support`](https://github.com/tabnas/support) and its Go half, so
+the two loaders cannot drift from each other either.
+
+A fixture is named by the test that supplies its directive, because what
+varies per case is the DIRECTIVE and a directive is a function — it cannot
+live in an `opts` column. So this is the one repo where a new file does
+have to be wired into both runtimes by hand. A fixture only one runtime
+runs proves nothing.
+
+Each ROW is now its own test case, rather than one assertion inside a
+per-file test, so a failure names the file and line it came from.
 
 ## Rules
 

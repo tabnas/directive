@@ -3,7 +3,7 @@
 # body permits implicit lists (n.dlist = 0), so `add<1, 2, 3>` builds the
 # list [1, 2, 3] before summing it. The close token ">" terminates the
 # implicit list and the directive together.
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 add<1, 2, 3>	6
 add<1, 2>	3
