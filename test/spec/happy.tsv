@@ -1,7 +1,7 @@
 # happy.tsv — the "upper" directive (open="@", no close) over the mini
 # test grammar (scalars, explicit lists [..], explicit maps {k:v}).
 # Action: @<word> → uppercased value (e.g. @a → "A").
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 # --- single value ---
 @a	"A"
@@ -37,5 +37,5 @@
 {x:1, y:2}	{"x": 1, "y": 2}
 
 # --- errors: the open token must be followed by a value ---
-@	!error unexpected
-[@]	!error unexpected
+@	ERROR:unexpected
+[@]	ERROR:unexpected

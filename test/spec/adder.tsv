@@ -1,7 +1,7 @@
 # adder.tsv — the "adder" directive (open="add<", close=">") over the
 # mini test grammar. Action: sums the numbers in the list body; an empty
 # body yields 0. add<[1, 2]> → 3.
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 add<[1, 2]>	3
 add<[1, 2, 3]>	6

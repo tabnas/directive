@@ -1,6 +1,6 @@
 # close-foo.tsv — the "foo" directive (open="foo<", close=">") over the
 # mini test grammar. Action: foo<...> → "FOO" (ignores the body).
-# Format: <input>\t<expected-json>    or    <input>\t!error <regex>
+# Format: <input>\t<expected-json>    or    <input>\tERROR:<code>
 
 # --- basic ---
 foo<a>	"FOO"
@@ -27,5 +27,5 @@ foo<foo<foo<a>>>	"FOO"
 [1, foo<a>, 2]	[1, "FOO", 2]
 
 # --- errors: close without open ---
->	!error unexpected
-{x:>}	!error unexpected
+>	ERROR:unexpected
+{x:>}	ERROR:unexpected
