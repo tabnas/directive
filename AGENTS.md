@@ -24,12 +24,12 @@ structure to exercise the plugin, with rule names (`val` / `list` / `map`
 | Path | What it is |
 |---|---|
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/directive` package. Plugin in `src/directive.ts`. Builds to `dist/` (+ `dist-test/`). Depends on `@tabnas/parser` (peer). |
-| [`go/`](go/) | Go port — `github.com/tabnas/directive/go`. Plugin in `directive.go`. Tracks `ts/`. Depends on `github.com/tabnas/parser/go` via a `replace`. |
+| [`go/`](go/) | Go port — `github.com/tabnas/directive/go`. Plugin in `directive.go`. Tracks `ts/`. Requires the published `github.com/tabnas/parser/go` and `github.com/tabnas/support/go` (no `replace`). |
 | [`test/spec/*.tsv`](test/spec/) | Shared conformance fixtures (`input → expected`), run by both implementations. |
 | `ts/test/mini-grammar.ts`, `go/mini_grammar_test.go` | The small host grammar (`makeMini()`) the tests run against. Keep the two in step. |
 | [`docs/`](docs/) | Cross-language docs: `tutorial.md`, `how-to.md`, `reference.md`, `explanation.md`. |
 | `scripts/fetch-parser.sh`, `scripts/fetch-debug.sh` | Standalone fetch-from-source helpers (alternative to the sibling checkout; see below). |
-| `vendor/` | Git-ignored. Holds `tabnas-parser` — a symlink to the sibling `../parser` checkout (or a fetched copy), used by the Go `replace`. |
+| `vendor/` | Git-ignored, and **not created by anything in the normal flow** — the Go module requires the published parser/support modules with no `replace`. `scripts/fetch-parser.sh` still writes here; it is vestigial. |
 
 ## The tabnas engine dependency
 
@@ -50,23 +50,26 @@ packages):
   do not `npm ci` or delete `node_modules`, which would break them.
   (`@tabnas/debug` and `@tabnas/railroad` are also `*` **devDependencies**
   — see below.) `engines.node` is `>=24`.
-- Go: `go/go.mod` has `replace github.com/tabnas/parser/go =>
-  ../vendor/tabnas-parser/go`, and `vendor/tabnas-parser` is a symlink to
-  the sibling `../parser`. The module is **vendor-replaced and excluded
-  from the repo-wide `go.work`**, so all Go commands run with **`GOWORK=off`**
-  (the Makefile sets this for you).
+- Go: `go/go.mod` requires the **published** modules
+  `github.com/tabnas/parser/go` and `github.com/tabnas/support/go`
+  directly, with **no `replace` directive** — they resolve from the module
+  proxy, so a bare checkout builds without fetching anything by hand. The
+  Makefile still sets `GOWORK=off` on every Go command; that is belt and
+  braces now (no `go.work` exists in the fleet) rather than a requirement
+  of a vendor replace.
 
 Clone `https://github.com/tabnas/parser` as a sibling of this repo and
 build its TS (`cd parser/ts && npm install && npm run build`) before
 working here. CI clones the engine (and the other siblings) and builds
 them first.
 
-`scripts/fetch-parser.sh` is the **standalone** alternative: it downloads
-the engine's GitHub `main` branch over HTTPS into `vendor/` (pin a ref
-with `TABNAS_PARSER_REF`; `TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch).
-Use it only when you can't keep a sibling checkout. Note the `vendor/`
-symlink and the fetch script populate the **same** path the Go `replace`
-points at.
+`scripts/fetch-parser.sh` is the **standalone** alternative for the
+TypeScript side: it downloads the engine's GitHub `main` branch over
+HTTPS into `vendor/` (pin a ref with `TABNAS_PARSER_REF`;
+`TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch). Use it only when you
+cannot keep a sibling checkout. **The Go module no longer consumes it** —
+there is no `replace` pointing at `vendor/`, so for Go this script is
+vestigial.
 
 ## Authority and alignment rules
 
@@ -130,8 +133,8 @@ points at.
 
 ## Build & test
 
-The standard tabnas Makefile (`GOWORK=off` for the vendor-replaced Go
-module) drives both runtimes from the repo root:
+The standard tabnas Makefile (which sets `GOWORK=off` on the Go
+commands) drives both runtimes from the repo root:
 
 ```bash
 make build   # build-ts (npm run build) + build-go (GOWORK=off go build)
@@ -271,8 +274,8 @@ resolved through the `node_modules/@tabnas/*` symlinks that
 `.github/workflows/ci.yml` is a thin **staged caller** (it replaced the
 old in-repo `build.yml`): it delegates to the org-standard reusable
 workflow `tabnas/.github/.github/workflows/polyglot-ci.yml@main`, passing
-`deps: "parser debug json abnf railroad"` and
-`build-order: "parser debug json abnf directive railroad"`. That reusable
+`deps: "parser support debug json"` and
+`build-order: "parser support debug json directive"`. That reusable
 workflow keeps the **sibling-checkout** strategy — it sets
 `core.autocrlf=false` (CRLF corrupts `.tsv` fixtures), clones the
 transitive `@tabnas` closure into sibling dirs, `npm i && npm run build`s
@@ -280,6 +283,6 @@ each in order, then runs the `ts/` suite on `ubuntu` / `windows` /
 `macos` (Node 24). It **also runs the Go suite** (`go build ./...` +
 `go test -v ./...` on `ubuntu` / `macos`): `run-ts` and `run-go` both
 default to `true` and this repo overrides neither. `.github/workflows/release.yml`
-handles releases. Note CI builds its own `go.work` excluding
-vendor-replaced modules, whereas locally this module is vendored and Go
-runs with `GOWORK=off` (the Makefile sets it).
+handles releases. The Go module resolves its dependencies from the module
+proxy in CI exactly as it does locally — there is no `replace`, no
+vendored tree and no `go.work` involved on either side.
