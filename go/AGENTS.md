@@ -14,12 +14,12 @@ list of intentional TS/Go differences.
   the tests run against is `mini_grammar_test.go` (`makeMini()`), the Go
   twin of `../ts/test/mini-grammar.ts` — keep the two in step.
 - Module `github.com/tabnas/directive/go`. The engine module
-  `github.com/tabnas/parser/go` is required with a `replace` pointing at
-  `../vendor/tabnas-parser/go`; fetch it with `../scripts/fetch-parser.sh`
-  first.
+  `github.com/tabnas/parser/go` and `github.com/tabnas/support/go` are
+  required as **published** modules with no `replace`, so they resolve
+  from the module proxy and a bare checkout builds with nothing fetched
+  by hand.
 
 ```bash
-TABNAS_SKIP_TS_BUILD=1 ../scripts/fetch-parser.sh
 go build ./... && go vet ./... && go test ./...
 ```
 
