@@ -53,7 +53,7 @@ const runSpec = (j: { parse: (s: string) => any }, name: string) =>
 
 describe('directive', () => {
 
-  test('happy', () => {
+  describe('happy', () => {
     const j = makeMini().use(Directive, {
       name: 'upper',
       open: '@',
@@ -68,7 +68,7 @@ describe('directive', () => {
   })
 
 
-  test('close', () => {
+  describe('close', () => {
     const j = makeMini().use(Directive, {
       name: 'foo',
       open: 'foo<',
@@ -103,7 +103,7 @@ describe('directive', () => {
   })
 
 
-  test('adder', () => {
+  describe('adder', () => {
     const j = makeMini().use(Directive, {
       name: 'adder',
       open: 'add<',
@@ -142,7 +142,7 @@ describe('directive', () => {
   })
 
 
-  test('inject', () => {
+  describe('inject', () => {
     const SRC: any = { a: 'A', b: { b: 1 }, c: [2, 3] }
 
     const j = makeMini().use(Directive, {
