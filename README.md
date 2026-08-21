@@ -13,6 +13,8 @@ triggers custom parsing behaviour. It is a plugin for the tabnas parser
 engine — its only dependency — and layers onto whatever host grammar you
 supply (it modifies the standard `val` / `list` / `map` / `pair` rules).
 
+Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
+
 This repository contains:
 
 | Path | Description |
