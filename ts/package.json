@@ -1,6 +1,6 @@
 {
   "name": "@tabnas/directive",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Directive syntax plugin for the tabnas JSON parser.",
   "main": "dist/directive.js",
   "type": "commonjs",
