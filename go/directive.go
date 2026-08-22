@@ -12,7 +12,7 @@ import (
 // VERSION is this module's version. It MUST equal ts/package.json
 // "version": the release orchestrator rewrites both, and
 // TestVersionMatchesPackageJSON fails the build if they drift.
-const VERSION = "0.5.5"
+const VERSION = "0.5.6"
 
 // Action is called when a directive is processed.
 // It receives the directive rule and parse context. The rule's Child.Node
