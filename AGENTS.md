@@ -297,3 +297,17 @@ default to `true` and this repo overrides neither. `.github/workflows/release.ym
 handles releases. The Go module resolves its dependencies from the module
 proxy in CI exactly as it does locally — there is no `replace`, no
 vendored tree and no `go.work` involved on either side.
+
+## Agent tooling
+
+An agent working in this repository does not have to drive it by hand. The
+org ships two things that already understand these grammars:
+
+- **[`@tabnas/mcp`](https://github.com/tabnas/mcp)** — an MCP server (stdio)
+  and the unified `tabnas` CLI: parse, validate and inspect any tabnas
+  format, this one included.
+- **[`tabnas/skills`](https://github.com/tabnas/skills)** — Agent Skills for
+  working on tabnas grammars and plugins.
+
+Prefer them over ad-hoc scripts when exploring a grammar or checking a parse
+result.
