@@ -1,0 +1,25 @@
+[package]
+name = "tabnas-directive"
+version = "0.5.6"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Richard Rodger <http://richardrodger.com>"]
+description = "Directive syntax plugin for the tabnas parser engine."
+license = "MIT"
+repository = "https://github.com/tabnas/directive"
+readme = "README.md"
+keywords = ["parser", "grammar", "json", "plugin", "directive"]
+categories = ["parsing"]
+
+[lib]
+name = "tabnas_directive"
+path = "src/lib.rs"
+
+[dependencies]
+# The engine is consumed as a SIBLING CHECKOUT, the standard tabnas
+# development model: clone https://github.com/tabnas/parser next to this
+# repo. The `tabnas` crate is not published, so there is no registry
+# version to fall back on.
+tabnas = { path = "../../parser/rs" }
+indexmap = { version = "2.2", features = ["serde"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
