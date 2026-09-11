@@ -2,8 +2,11 @@
 
 This is the Go port of `@tabnas/directive`. It is **not** canonical: it
 tracks the TypeScript implementation in `../ts`, which is the source of
-truth. See [../AGENTS.md](../AGENTS.md) for the parity rules and the full
-list of intentional TS/Go differences.
+truth. See [../AGENTS.md](../AGENTS.md) for the parity rules and
+[../docs/reference.md](../docs/reference.md) for the full list of
+intentional TS / Go / Rust differences. There is a Rust port too, in
+[`../rs`](../rs) — the shared `../test/spec/*.tsv` fixtures are the
+parity contract across all three.
 
 - Source: `directive.go`. Provides `Directive` (a `tabnas.Plugin` value),
   `Apply(j, opts)` (the typed convenience constructor over `j.Use`), and

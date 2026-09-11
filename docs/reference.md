@@ -4,6 +4,9 @@ Complete API listing for the directive plugin. For an orientation on
 how to use these pieces, see the [Tutorial](tutorial.md) or the
 [How-to guides](how-to.md).
 
+There are three implementations — TypeScript (canonical), Go and Rust —
+and each has its own API section below.
+
 The plugin's only dependency is the
 [tabnas](https://github.com/tabnas/parser) parser engine; its types
 (`Rule`, `Context`, `Tin`, …) come from there. The plugin modifies host
@@ -132,6 +135,115 @@ type DirectiveConfig struct {
 ```
 
 
+## Rust API
+
+### `plugin`, `apply`
+
+```rust
+use tabnas::Tabnas;
+use tabnas_directive::{apply, plugin, DirectiveOptions};
+
+// apply registers the directive through Tabnas::use_plugin, so it is
+// re-applied to derived instances. The plugin never panics — every
+// failure path comes back as Err(DirectiveError).
+apply(&mut parser, DirectiveOptions::new("upper", "@").with_action(action))?;
+
+// Or build the Plugin value and install it yourself:
+parser.use_plugin(plugin(DirectiveOptions::new("upper", "@")), None)?;
+```
+
+`parser` is any `Tabnas` instance with a host grammar installed (one
+that defines the `val` / `list` / `map` / `pair` rules).
+
+```rust
+pub fn plugin(options: DirectiveOptions) -> Plugin;
+pub fn apply(parser: &mut Tabnas, options: DirectiveOptions)
+    -> Result<(), DirectiveError>;
+```
+
+### `DirectiveOptions`
+
+Built with `DirectiveOptions::new(name, open)` plus the `with_*`
+methods; the fields are public too.
+
+| Field    | Type                    | Required | Description                                                             |
+| -------- | ----------------------- | -------- | ----------------------------------------------------------------------- |
+| `name`   | `String`                | yes      | Directive name. Rule name and token-name suffix.                        |
+| `open`   | `String`                | yes      | Open character sequence. Must be unique per instance.                   |
+| `close`  | `Option<String>`        | no       | Close character sequence. `None` (or empty) → the directive consumes a single value. |
+| `action` | `DirectiveAction`       | no       | How the parsed body is transformed. Default `None`.                     |
+| `rules`  | `Option<RulesOption>`   | no       | Rule modifications. `None` → defaults. `Some(RulesOption::new())` → no rules. |
+| `custom` | `Option<CustomFn>`      | no       | Callback after setup. Argument: `&DirectiveConfig { open, close, name }`. |
+
+| Builder                      | Sets                                                |
+| ---------------------------- | --------------------------------------------------- |
+| `with_close(close)`          | `close`                                             |
+| `with_action(f)`             | `action = DirectiveAction::Call(f)`                 |
+| `with_token_action(f)`       | `action = DirectiveAction::Token(f)`                |
+| `with_action_path(path)`     | `action = DirectiveAction::Path(path)`              |
+| `with_rules(rules)`          | `rules`                                             |
+| `with_custom(f)`             | `custom`                                            |
+
+### `DirectiveAction`
+
+```rust
+pub enum DirectiveAction {
+    None,
+    Call(ActionFn),   // Fn(&mut Rule, &mut Context) -> Result<(), ActionError>
+    Token(TokenActionFn), // …-> Result<Option<Token>, ActionError>
+    Path(String),     // dotted path into the plugin-options namespace
+}
+```
+
+### `set_node`
+
+```rust
+pub fn set_node(rule: &mut Rule, value: Value);
+```
+
+A rule pushed by the engine SHARES its parent's node cell, so writing
+through `rule.node.borrow_mut()` would overwrite the parent's node too.
+`set_node` installs a fresh cell — it is what `rule.node = …` means in
+the canonical TypeScript engine. Borrow the cell directly only to mutate
+a container the rule genuinely shares (pushing onto an enclosing list,
+or merging into the map behind a `pair`).
+
+### `RulesOption`, `RuleMod`
+
+```rust
+pub struct RulesOption {
+    pub open:  BTreeMap<String, RuleMod>,
+    pub close: BTreeMap<String, RuleMod>,
+}
+pub struct RuleMod {
+    pub c: Option<ConditionFn>, // optional per-rule condition
+}
+```
+
+`RulesOption::new()` modifies nothing; `.open_rules("val,pair")` and
+`.close_rules(…)` take the comma-separated form (whitespace and empty
+names are dropped), and `.open_rule(name, RuleMod::when(cond))` /
+`.close_rule(…)` add one rule with a condition. Rules are held in a
+`BTreeMap`, so installation order is deterministic.
+
+### `CustomFn`, `DirectiveConfig`
+
+```rust
+pub type CustomFn = Arc<dyn Fn(&mut Tabnas, &DirectiveConfig) + Send + Sync>;
+pub struct DirectiveConfig {
+    pub open:  Tin,
+    pub close: Option<Tin>, // None if no close token
+    pub name:  String,
+}
+```
+
+### `DirectiveError`
+
+A registration failure — a duplicate open token, or a grammar the engine
+refused. Converts to and from `tabnas::PluginError`, so `apply` and
+`use_plugin` report the same thing.
+
+
 ## Rules defaults
 
 When `rules` / `Rules` is omitted:
@@ -189,28 +301,31 @@ are permitted inside the directive body:
 
 ## Errors
 
-| Situation                                       | TS behaviour               | Go behaviour              |
-| ----------------------------------------------- | -------------------------- | ------------------------- |
-| Registering a directive whose `open` is already fixed | `throw` Error             | `Apply` / `j.Use` return an `error` (no panic) |
-| Grammar build failure during registration       | `throw` (engine)           | `Apply` / `j.Use` return an `error` (no panic) |
-| Parsing a close token without its open          | engine `unexpected` error  | engine `unexpected` error |
+| Situation                                       | TS behaviour               | Go behaviour              | Rust behaviour            |
+| ----------------------------------------------- | -------------------------- | ------------------------- | ------------------------- |
+| Registering a directive whose `open` is already fixed | `throw` Error             | `Apply` / `j.Use` return an `error` (no panic) | `apply` / `use_plugin` return `Err` (no panic) |
+| Grammar build failure during registration       | `throw` (engine)           | `Apply` / `j.Use` return an `error` (no panic) | `apply` / `use_plugin` return `Err` (no panic) |
+| Parsing a close token without its open          | engine `unexpected` error  | engine `unexpected` error | engine `unexpected` error |
+| An action reporting failure                     | return an error `Token`    | return a `*tabnas.Token` with `Err` set | return `Err(ActionError)`, or a token carrying an error code |
 
 
-## TypeScript / Go differences
+## TypeScript / Go / Rust differences
 
-TypeScript is canonical; the Go port mirrors its behaviour. Both pass
-the identical shared `test/spec/*.tsv` conformance fixtures. The
-following differences are intentional — they stem from Go's static
-typing and from engine-API differences, not from drift:
+TypeScript is canonical; the Go and Rust ports mirror its behaviour. All
+three pass the identical shared `test/spec/*.tsv` conformance fixtures.
+The following differences are intentional — they stem from static typing
+and from engine-API differences, not from drift:
 
-| Area | TypeScript | Go |
-| --- | --- | --- |
-| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string array, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. |
-| **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. |
-| **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while the Go `Options` struct is closed, so the path resolves in the plugin-options namespace: `"custom.x"` reads `j.PluginOptions("custom")["x"]` at fire time. |
-| **Action return value** | An action may return a `Token`; an error token halts the parse. | Same via the `TokenAction` form (`func(r, ctx) any`); a returned `*tabnas.Token` with `Err` set halts the parse, other tokens are ignored. |
-| **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. |
-| **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `test/spec/implicit.tsv`. |
+| Area | TypeScript | Go | Rust |
+| --- | --- | --- | --- |
+| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string array, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. | `RulesOption` is a `BTreeMap<String, RuleMod>` per direction; `.open_rules("val,pair")` takes the comma string, `.open_rule(name, RuleMod::when(…))` adds a condition. |
+| **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. | Same as Go: `rules: None` uses the defaults, `Some(RulesOption::new())` modifies no rules, and any `Some` is a complete override. |
+| **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while the Go `Options` struct is closed, so the path resolves in the plugin-options namespace: `"custom.x"` reads `j.PluginOptions("custom")["x"]` at fire time. | Same as Go, for the same reason: `DirectiveAction::Path("custom.x")` reads `parser.plugin_options("custom")["x"]` from the parse's own resolved options at fire time. |
+| **Action return value** | An action may return a `Token`; an error token halts the parse. | Same via the `TokenAction` form (`func(r, ctx) any`); a returned `*tabnas.Token` with `Err` set halts the parse, other tokens are ignored. | Same via `with_token_action` (`Fn(&mut Rule, &mut Context) -> Result<Option<Token>, ActionError>`); a returned token carrying an error code halts the parse, other tokens are forwarded and otherwise ignored. An action may also fail directly with `Err(ActionError)`. |
+| **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. | The plugin returns `Err(DirectiveError)` (propagated by `use_plugin` / `apply`) and never panics; a panic inside a user callback is contained by the engine and surfaces as a `PluginError`. |
+| **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `test/spec/implicit.tsv`. | Read directly, as in TypeScript. The Rust engine hands a replaced rule the same `Rc<RefCell<Value>>` node cell, so no chain walk is needed; `test/spec/implicit.tsv` exercises it. |
+| **Assigning a node** | `rule.node = value`. | `rule.Node = value`. | A pushed or replaced rule SHARES its parent's node cell, so an assignment must install a fresh one: call `set_node(rule, value)` rather than writing through `rule.node.borrow_mut()`. Borrow the cell only to mutate a container the rule genuinely shares — pushing onto an enclosing list, say. |
+| **Rule-map ordering** | Object key order. | Go map iteration order (unordered). | `BTreeMap`, so a directive installs its host-rule modifications in a deterministic order. |
 
 
 ## Spec file format (`test/spec/*.tsv`)
@@ -219,7 +334,10 @@ typing and from engine-API differences, not from drift:
 # comments start with '#'
 # blank lines are ignored
 <input><TAB><expected-json>
-<input><TAB>!error <regex>
+<input><TAB>ERROR:<code>
 ```
 
-Parsed by both the TypeScript and the Go test suites.
+Parsed by the TypeScript, Go and Rust test suites. The TypeScript and Go
+loaders come from `@tabnas/support`; Rust has no support crate, so its
+loader lives in `rs/tests/common/spec.rs` and must keep to the same
+codec — see [`test/AGENTS.md`](../test/AGENTS.md).

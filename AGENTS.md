@@ -15,7 +15,8 @@ directive.
 The engine ships **no grammar**, so the plugin only makes sense on top of
 a host grammar. The tests therefore bring their own deliberately small
 one (scalars, explicit lists `[a, b]`, explicit maps `{k: v}`) in
-`ts/test/mini-grammar.ts` / `go/mini_grammar_test.go` — just enough
+`ts/test/mini-grammar.ts` / `go/mini_grammar_test.go` /
+`rs/tests/common/mini_grammar.rs` — just enough
 structure to exercise the plugin, with rule names (`val` / `list` / `map`
 / `pair` / `elem`) matching the directive's default targets.
 
@@ -25,8 +26,9 @@ structure to exercise the plugin, with rule names (`val` / `list` / `map`
 |---|---|
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/directive` package. Plugin in `src/directive.ts`. Builds to `dist/` (+ `dist-test/`). Depends on `@tabnas/parser` (peer). |
 | [`go/`](go/) | Go port — `github.com/tabnas/directive/go`. Plugin in `directive.go`. Tracks `ts/`. Requires the published `github.com/tabnas/parser/go` and `github.com/tabnas/support/go` (no `replace`). |
-| [`test/spec/*.tsv`](test/spec/) | Shared conformance fixtures (`input → expected`), run by both implementations. |
-| `ts/test/mini-grammar.ts`, `go/mini_grammar_test.go` | The small host grammar (`makeMini()`) the tests run against. Keep the two in step. |
+| [`rs/`](rs/) | Rust port — the `tabnas-directive` crate. Plugin in `src/lib.rs`. Tracks `ts/`. Takes the engine as a **path dependency on the sibling checkout** (`../../parser/rs`); the `tabnas` crate is not published. |
+| [`test/spec/*.tsv`](test/spec/) | Shared conformance fixtures (`input → expected`), run by all three implementations. |
+| `ts/test/mini-grammar.ts`, `go/mini_grammar_test.go`, `rs/tests/common/mini_grammar.rs` | The small host grammar (`makeMini()` / `make_mini()`) the tests run against. Keep the three in step. |
 | [`docs/`](docs/) | Cross-language docs: `tutorial.md`, `how-to.md`, `reference.md`, `explanation.md`. |
 | `scripts/fetch-parser.sh`, `scripts/fetch-debug.sh` | Standalone fetch-from-source helpers (alternative to the sibling checkout; see below). |
 | `vendor/` | Git-ignored, and **not created by anything in the normal flow** — the Go module requires the published parser/support modules with no `replace`. `scripts/fetch-parser.sh` still writes here; it is vestigial. |
@@ -34,14 +36,15 @@ structure to exercise the plugin, with rule names (`val` / `list` / `map`
 ## The tabnas engine dependency
 
 The **only** runtime dependency is the **tabnas** parser engine (npm
-`@tabnas/parser`, Go module `github.com/tabnas/parser/go`). The plugin is
+`@tabnas/parser`, Go module `github.com/tabnas/parser/go`, Rust crate
+`tabnas`). The plugin is
 written against its plugin API — it imports `Tabnas`, `Rule`, `RuleSpec`,
 `StateAction`, `Plugin`, `Context`, `Token`, `Tin` and registers tokens,
 rule modifications and a declarative grammar spec via the instance API.
 
-Both runtimes consume the engine as a **sibling checkout** (the standard
-tabnas development model, until `tabnas/parser` publishes tagged
-packages):
+TypeScript and Rust consume the engine as a **sibling checkout** (the
+standard tabnas development model, until `tabnas/parser` publishes
+tagged packages); Go resolves it from the module proxy:
 
 - TypeScript: `"@tabnas/parser": ">=0"` is the **peerDependency**, mirrored
   as `"@tabnas/parser": "*"` in `devDependencies` so local builds resolve
@@ -50,6 +53,11 @@ packages):
   do not `npm ci` or delete `node_modules`, which would break them.
   (`@tabnas/debug` and `@tabnas/railroad` are also `*` **devDependencies**
   — see below.) `engines.node` is `>=24`.
+- Rust: `rs/Cargo.toml` declares `tabnas = { path = "../../parser/rs" }`.
+  The crate is not published to any registry, so there is no version to
+  fall back on — the sibling checkout is required, and nothing needs
+  building first (cargo compiles the engine from source). `rust-version`
+  is `1.85`.
 - Go: `go/go.mod` requires the **published** modules
   `github.com/tabnas/parser/go` and `github.com/tabnas/support/go`
   directly, with **no `replace` directive** — they resolve from the module
@@ -75,15 +83,15 @@ vestigial.
 
 1. **TypeScript is canonical.** `ts/src/directive.ts` is the source of
    truth for behaviour, option names, defaults, the grammar spec it
-   builds, and the order of alts. Change TS first, then update Go to match
-   as far as the Go engine API and Go's type system allow.
-2. The shared `test/spec/*.tsv` fixtures are the **parity contract**. Both
-   suites run them and both must stay green; a new behaviour means a new
-   fixture row, exercised by both runtimes.
-3. Some divergence is real and **intended**, not drift (Go static typing,
+   builds, and the order of alts. Change TS first, then update Go and
+   Rust to match as far as each engine API and type system allow.
+2. The shared `test/spec/*.tsv` fixtures are the **parity contract**. All
+   three suites run them and all three must stay green; a new behaviour
+   means a new fixture row, exercised by every runtime.
+3. Some divergence is real and **intended**, not drift (static typing,
    engine-API differences). The current set is tabulated in
-   `docs/reference.md` (§ "TypeScript / Go differences"); keep it in sync
-   when behaviour changes. Notable items:
+   `docs/reference.md` (§ "TypeScript / Go / Rust differences"); keep it
+   in sync when behaviour changes. Notable items:
    - Go's `Action` is a typed `func(rule *tabnas.Rule, ctx *tabnas.Context)`;
      TS also accepts a dotted-path **string** (`tabnas.util.prop` lookup)
      and an action may return a `Token`.
@@ -94,10 +102,20 @@ vestigial.
      `j.Use` / `Apply`); the Go plugin never panics.
    - Go's `bc` hook walks the `Prev`-linked replacement chain to adopt the
      final child node (a Go slice-reallocation workaround); the
-     implicit-list bodies in `test/spec/implicit.tsv` exercise it.
-4. Keep the two mini grammars (`ts/test/mini-grammar.ts`,
-   `go/mini_grammar_test.go`) in step — they define the rule surface the
-   directive modifies.
+     implicit-list bodies in `test/spec/implicit.tsv` exercise it. Rust
+     needs no such walk — a replaced rule keeps the same node cell.
+   - Rust's `rules` is `Option<RulesOption>` with the same semantics as
+     Go's `*RulesOption`, and its actions return `Result`: a registration
+     failure is `Err(DirectiveError)`, an action failure is
+     `Err(ActionError)`.
+   - **Rust only:** a pushed or replaced rule SHARES its parent's
+     `Rc<RefCell<Value>>` node cell, so assigning a node means installing
+     a fresh cell (`set_node`), never writing through
+     `rule.node.borrow_mut()`. See `rs/AGENTS.md` § "The shared node
+     cell".
+4. Keep the three mini grammars (`ts/test/mini-grammar.ts`,
+   `go/mini_grammar_test.go`, `rs/tests/common/mini_grammar.rs`) in step —
+   they define the rule surface the directive modifies.
 
 ## How the plugin works (the non-obvious parts)
 
@@ -108,13 +126,15 @@ vestigial.
   whatever `rules` you pass, so a partial `rules` keeps the default of the
   direction it omits, and `rules: {}` is indistinguishable from an absent
   `rules`. Only an explicit **`rules: null`** modifies no host rules
-  (which leaves the open token unrecognised). **Go** cannot express that
-  merge over a `*RulesOption` and instead treats any non-`nil` value as a
-  complete override — `nil` selects the defaults, `&RulesOption{}`
-  modifies no rules. This is an intentional divergence, tabulated in
+  (which leaves the open token unrecognised). **Go** and **Rust** cannot
+  express that merge over a typed option and instead treat any present
+  value as a complete override — Go's `nil` / Rust's `None` selects the
+  defaults, `&RulesOption{}` / `Some(RulesOption::new())` modifies no
+  rules. This is an intentional divergence, tabulated in
   `docs/reference.md`; `ts/test/directive.test.ts`
-  (`rules-defaults-merge`, `edges`) and `go/directive_test.go`
-  (`TestEdges`) pin the two behaviours.
+  (`rules-defaults-merge`, `edges`), `go/directive_test.go`
+  (`TestEdges`) and `rs/tests/directive_test.rs` (`edges`,
+  `default_rules_are_used_when_rules_is_absent`) pin the behaviours.
 - **Tokens.** `open` becomes the fixed token `#OD_<name>`; `close` (if
   given and not already a fixed token) becomes `#CD_<name>`. The **open
   token must be unique** — re-registering an existing fixed token throws
@@ -134,16 +154,16 @@ vestigial.
 ## Build & test
 
 The standard tabnas Makefile (which sets `GOWORK=off` on the Go
-commands) drives both runtimes from the repo root:
+commands) drives all three runtimes from the repo root:
 
 ```bash
-make build   # build-ts (npm run build) + build-go (GOWORK=off go build)
-make test    # test-ts (npm test) + test-go (GOWORK=off go test -v)
+make build   # build-ts (npm run build) + build-go (GOWORK=off go build) + build-rs (cargo build)
+make test    # test-ts (npm test) + test-go (GOWORK=off go test -v) + test-rs (cargo test + clippy)
 ```
 
 Targeted: `make build-ts` / `make test-ts`, `make build-go` /
-`make test-go`, `make clean`, `make reset`. The Makefile does **not**
-fetch — it assumes the sibling `../parser` (and the `vendor/tabnas-parser`
+`make test-go`, `make build-rs` / `make test-rs`, `make clean`,
+`make reset`. The Makefile does **not** fetch — it assumes the sibling `../parser` (and the `vendor/tabnas-parser`
 symlink) is in place; run `scripts/fetch-parser.sh` first only if you are
 not using a sibling checkout.
 
@@ -152,13 +172,18 @@ Directly:
 ```bash
 cd ts && npm install && npm test          # tsc --build src test, then node --test dist-test/*.test.js
 cd go && GOWORK=off go test ./...          # also runs the shared spec fixtures
+cd rs && cargo test --all-targets          # also runs the shared spec fixtures
 ```
 
 TS tests: `directive.test.ts` (spec-driven), `doc-examples.test.ts`
 (checks the doc snippets), `debug.test.ts` (composition with
 `@tabnas/debug`, below). Go: `directive_test.go`, driven by the same
-`test/spec/*.tsv` and the Go mini grammar. Run `gofmt` and
-`go vet ./...` before committing Go.
+`test/spec/*.tsv` and the Go mini grammar. Rust:
+`tests/directive_test.rs` plus `tests/version_test.rs`, driven by the
+same fixtures and the Rust mini grammar. Run `gofmt` and `go vet ./...`
+before committing Go; `cargo fmt` and
+`cargo clippy --all-targets --all-features -- -D warnings` before
+committing Rust.
 
 ## Verify your work
 
@@ -167,7 +192,7 @@ the Makefile sets `GOWORK=off` so Go resolves the published engine rather
 than a sibling workspace:
 
 ```bash
-make build && make test      # both runtimes — the check that matters
+make build && make test      # all three runtimes — the check that matters
 ```
 
 Narrower, when iterating:
@@ -175,6 +200,7 @@ Narrower, when iterating:
 ```bash
 (cd ts && npm test)                    # `pretest` builds first, then runs dist-test/
 (cd go && GOWORK=off go test ./...)    # unit tests + the shared spec fixtures
+(cd rs && cargo test --all-targets)    # unit tests + the shared spec fixtures
 ```
 
 Each line is a subshell. `npm test` compiles first — its `pretest` runs
@@ -198,26 +224,31 @@ defect read as an accepted condition. The wiring is fixed instead, and
 
 What "correct" means here, in order of authority:
 
-1. **The shared fixtures pass in BOTH runtimes.** `test/spec/*.tsv` is the
-   parity contract — a row green in one runtime and red in the other is a
-   failure, not a discrepancy. A new behaviour means a new fixture row,
-   exercised by both.
-2. **The two mini grammars stay in step.** `ts/test/mini-grammar.ts` and
-   `go/mini_grammar_test.go` define the rule surface the directive
-   modifies; a fixture only proves parity if both hosts match.
-3. **The three version constants agree** — `ts/package.json` `"version"`,
-   `VERSION` in `ts/src/directive.ts`, and `const VERSION` in
-   `go/directive.go`. `ts/test/version.test.ts` and `go/version_test.go`
-   fail the build if they drift.
+1. **The shared fixtures pass in ALL THREE runtimes.** `test/spec/*.tsv`
+   is the parity contract — a row green in one runtime and red in another
+   is a failure, not a discrepancy. A new behaviour means a new fixture
+   row, exercised by every runtime. A fixture is named by the test that
+   supplies its directive, so a new file has to be wired into all three
+   suites by hand.
+2. **The three mini grammars stay in step.** `ts/test/mini-grammar.ts`,
+   `go/mini_grammar_test.go` and `rs/tests/common/mini_grammar.rs` define
+   the rule surface the directive modifies; a fixture only proves parity
+   if all three hosts match.
+3. **The five version constants agree** — `ts/package.json` `"version"`,
+   `VERSION` in `ts/src/directive.ts`, `const VERSION` in
+   `go/directive.go`, `version` in `rs/Cargo.toml`, and `pub const
+   VERSION` in `rs/src/lib.rs`. `ts/test/version.test.ts`,
+   `go/version_test.go` and `rs/tests/version_test.rs` fail the build if
+   they drift.
 
-If TS and Go genuinely must differ (Go's type system, an engine-API limit),
-record it in `docs/reference.md` § "TypeScript / Go differences" rather
-than letting the ports drift silently.
+If a port genuinely must differ (a type system, an engine-API limit),
+record it in `docs/reference.md` § "TypeScript / Go / Rust differences"
+rather than letting the ports drift silently.
 
 ## Error codes
 
 This plugin declares no error codes of its own — it has no `error`/`hint`
-catalogue in either runtime. The rejections it produces surface under codes
+catalogue in any runtime. The rejections it produces surface under codes
 inherited from the engine: `unexpected` is exercised by the shared fixtures
 here (a stray or unclosed directive token pins `ERROR:unexpected`).
 Inherited codes are not redeclared; overriding one means extending
@@ -279,6 +310,12 @@ resolved through the `node_modules/@tabnas/*` symlinks that
   `go/directive.go`, commits, tags `go/vX.Y.Z`, pushes,
   and (if `gh` is present) cuts a GitHub release. `make tags-go` lists the
   Go tags newest-first.
+- Rust: **not published.** The crate depends on the engine by path, and
+  the `tabnas` engine crate is itself unpublished, so a registry release
+  is not possible until the engine ships one. There is no `publish-rs`
+  target — a version bump still has to update `rs/Cargo.toml` and
+  `rs/src/lib.rs` together with the TS and Go constants, and
+  `rs/tests/version_test.rs` fails the build if it does not.
 
 ## CI
 
@@ -297,6 +334,16 @@ default to `true` and this repo overrides neither. `.github/workflows/release.ym
 handles releases. The Go module resolves its dependencies from the module
 proxy in CI exactly as it does locally — there is no `replace`, no
 vendored tree and no `go.work` involved on either side.
+
+**The Rust suite is not wired into CI yet.** Whether the reusable
+workflow grows a `run-rs` input is a decision for `tabnas/.github`, and
+session credentials cannot write `.github/workflows/*` anyway (admin
+DECISIONS.md ADR-8) — so `rs/` is currently proved locally by
+`make test-rs`, and `cargo` needs the sibling `../parser` checkout the
+workflow already clones. Ask a maintainer to promote the Rust job once
+the reusable workflow supports it. Until then, run `make test-rs` before
+pushing a change that touches `rs/`, `ts/src/directive.ts` or
+`test/spec/`.
 
 ## Agent tooling
 
