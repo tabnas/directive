@@ -99,8 +99,8 @@ Behaviour:
 
 - Assign `rule.node` to set the directive's result value.
 - If `rule.parent` is a `pair`, you may instead mutate
-  `rule.parent.node` (e.g. `Object.assign`) and leave `rule.node`
-  unset — useful for directives that expand into map entries.
+  `rule.parent.node` (for example `Object.assign`) and leave `rule.node`
+  unset, which is useful for directives that expand into map entries.
 - Returning a `Token` (something with `.isToken`) overrides the next
   token; the close hook propagates it. Advanced.
 
@@ -111,7 +111,7 @@ action for you:
 action = (rule) => (rule.node = tabnas.util.prop(tabnas.options, path))
 ```
 
-i.e. it reads the dotted `path` from the live instance options every
+that is, it reads the dotted `path` from the live instance options every
 time the directive fires, and assigns it as the result.
 
 
@@ -124,13 +124,13 @@ type RulesOption = {
 }
 ```
 
-- **String / string-array form** — split on commas (and surrounding
+- **String / string-array form**. Split on commas (and surrounding
   whitespace) and treated as a set of rule names with no condition.
   `'val, pair'` and `['val', 'pair']` are equivalent.
-- **Record form** — each key is a host rule name; the value may carry a
+- **Record form**. Each key is a host rule name; the value may carry a
   per-rule condition `c: (rule, ctx) => boolean`. The directive only
   matches inside that rule when `c` returns truthy.
-- **`null`** for the whole `rules` option — modify no host rules.
+- **`null`** for the whole `rules` option. Modify no host rules.
 
 `rules.open` rules get alternates that detect the open token and push
 into the directive rule. `rules.close` rules (only meaningful when
@@ -161,7 +161,7 @@ For a directive named `NAME`:
 | `#OD_<NAME>` | always                                                     | `open`  |
 | `#CD_<NAME>` | only if `close` is set **and** not already a fixed token   | `close` |
 
-When `close` collides with an existing fixed token (e.g. a close
+When `close` collides with an existing fixed token (for example a close
 character shared across directives) the existing token is reused and no
 new `#CD_<NAME>` is created. Access a registered token via
 `j.token.OD_<NAME>`.
@@ -195,8 +195,8 @@ are permitted inside the directive body:
 
 | `close` present? | `dlist` / `dmap` inside the body |
 | ---------------- | -------------------------------- |
-| yes              | 0 — implicits allowed (the close bounds the body) |
-| no               | 1 — implicits suppressed (so the directive consumes exactly one value and does not eat trailing siblings) |
+| yes              | 0, implicits allowed (the close bounds the body) |
+| no               | 1, implicits suppressed (so the directive consumes exactly one value and does not eat trailing siblings) |
 
 
 ## Errors

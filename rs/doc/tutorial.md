@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut parser = Tabnas::new();
     register_host_grammar(&mut parser); // provides val / list / map / pair
 
-    // apply returns Result. The plugin never panics — a duplicate open
+    // apply returns Result. The plugin never panics: a duplicate open
     // token or a grammar build failure comes back as Err.
     apply(
         &mut parser,
@@ -70,17 +70,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 What each piece does:
 
-- `DirectiveOptions::new(name, open)` — the directive's name (the plugin
+- `DirectiveOptions::new(name, open)`. The directive's name (the plugin
   creates a parse rule with this name and uses it as a token-name
   suffix) and the character sequence that triggers it.
-- `with_action(f)` — a callback run once the body has parsed. The body's
+- `with_action(f)`. A callback run once the body has parsed. The body's
   value is `rule.child_node`; call `set_node` to set the result.
 
 **Use `set_node`, not `rule.node.borrow_mut()`.** A rule pushed by the
 engine SHARES its parent's node cell, so writing through the cell would
 overwrite the parent's node too. `set_node` installs a fresh cell, which
 is what `rule.node = …` means in the canonical TypeScript engine. Borrow
-the cell directly only to mutate a container the rule genuinely shares —
+the cell directly only to mutate a container the rule genuinely shares;
 see [How-to guides](guide.md#merge-into-the-surrounding-map-at-a-pair-position).
 
 
@@ -137,10 +137,10 @@ println!("{}", parser.parse("sum<[1, 2, 3]>")?); // 6
 ## 5. Boundary closing
 
 A close token also terminates a list or map opened **inside** the
-directive — you do not have to close the inner bracket first:
+directive; you do not have to close the inner bracket first:
 
 ```rust
-println!("{}", parser.parse("sum<[1, 2>")?); // 3 — note: no ']' before '>'
+println!("{}", parser.parse("sum<[1, 2>")?); // 3, note: no ']' before '>'
 ```
 
 The `>` closes both the open list and the directive at once. See the
@@ -170,7 +170,7 @@ DirectiveOptions::new("strict", "strict<")
 
 ## Where to go next
 
-- [How-to guides](guide.md) — focused recipes.
-- [Reference](reference.md) — every option, type and counter.
-- [Concepts](concepts.md) — the engine relationship, the design
+- [How-to guides](guide.md). Focused recipes.
+- [Reference](reference.md). Every option, type and counter.
+- [Concepts](concepts.md). The engine relationship, the design
   trade-offs, and the differences from the TypeScript version.

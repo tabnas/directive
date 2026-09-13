@@ -8,9 +8,9 @@
 <!-- /tabnas-badges -->
 
 Directive syntax for the [tabnas](https://github.com/tabnas/parser)
-parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
+parser. A directive is a token sequence (for example `@name`, `add<1,2>`) that
 triggers custom parsing behaviour. It is a plugin for the tabnas parser
-engine — its only dependency — and layers onto whatever host grammar you
+engine (its only dependency) and layers onto whatever host grammar you
 supply (it modifies the standard `val` / `list` / `map` / `pair` rules).
 
 Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
@@ -57,14 +57,14 @@ j.parse('[@"a", @"b", 1]')   // => ['A', 'B', 1]
 
 The four-quadrant docs come in all three languages.
 
-**TypeScript** (canonical) — [tutorial](ts/doc/tutorial.md) ·
+**TypeScript** (canonical): [tutorial](ts/doc/tutorial.md) ·
 [how-to guide](ts/doc/guide.md) · [reference](ts/doc/reference.md) ·
 [concepts](ts/doc/concepts.md)
 
-**Go** — [tutorial](go/doc/tutorial.md) · [how-to guide](go/doc/guide.md)
+**Go**: [tutorial](go/doc/tutorial.md) · [how-to guide](go/doc/guide.md)
 · [reference](go/doc/reference.md) · [concepts](go/doc/concepts.md)
 
-**Rust** — [tutorial](rs/doc/tutorial.md) ·
+**Rust**: [tutorial](rs/doc/tutorial.md) ·
 [how-to guide](rs/doc/guide.md) · [reference](rs/doc/reference.md) ·
 [concepts](rs/doc/concepts.md)
 
@@ -74,14 +74,14 @@ Per-language quickstarts live in [`ts/README.md`](ts/README.md),
 ## Build and test
 
 The only dependency is the `tabnas` parser engine, which is not published
-to a registry, so the implementations consume it from source — normally
+to a registry, so the implementations consume it from source, normally
 as a **sibling checkout** of `https://github.com/tabnas/parser` (built
 first with `cd parser/ts && npm install && npm run build`), which the Go
 module reaches through the `vendor/tabnas-parser` symlink and the Rust
 crate reaches through a `path` dependency on `../parser/rs`. The tests
 bring their own small grammar ([`ts/test/mini-grammar.ts`](ts/test/mini-grammar.ts),
 [`go/mini_grammar_test.go`](go/mini_grammar_test.go),
-[`rs/tests/common/mini_grammar.rs`](rs/tests/common/mini_grammar.rs)) —
+[`rs/tests/common/mini_grammar.rs`](rs/tests/common/mini_grammar.rs)):
 just enough structure (scalars, explicit lists and maps) to exercise the
 plugin.
 
@@ -96,7 +96,7 @@ make test    # test all three implementations
 Targeted: `make test-ts`, `make test-go`, `make test-rs`.
 
 If you cannot keep a sibling checkout, run `scripts/fetch-parser.sh`
-first — it downloads the engine's GitHub `main` branch over HTTPS into
+first; it downloads the engine's GitHub `main` branch over HTTPS into
 `vendor/` (git-ignored) and builds the TypeScript engine. Pin a different
 engine ref with `TABNAS_PARSER_REF`.
 

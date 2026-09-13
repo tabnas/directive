@@ -50,7 +50,7 @@ func main() {
 	j := tabnas.Make()
 	j.Use(hostGrammar) // provides val / list / map / pair
 
-	// Apply returns (instance, error). The plugin never panics — a
+	// Apply returns (instance, error). The plugin never panics: a
 	// duplicate open token or a grammar build failure comes back as err.
 	if _, err := tabnasdirective.Apply(j, tabnasdirective.DirectiveOptions{
 		Name: "upper",
@@ -70,10 +70,10 @@ func main() {
 
 What each option does:
 
-- `Name` — the directive's name. The plugin creates a parse rule with
+- `Name`. The directive's name. The plugin creates a parse rule with
   this name and uses it as a token-name suffix.
-- `Open` — the character sequence that triggers the directive.
-- `Action` — a callback run once the body has parsed. The body's value
+- `Open`. The character sequence that triggers the directive.
+- `Action`. A callback run once the body has parsed. The body's value
   is `r.Child.Node`; assign `r.Node` to set the result.
 
 
@@ -130,7 +130,7 @@ fmt.Printf("%#v\n", v) // float64(6)
 ## 5. Boundary closing
 
 A close token also terminates a list or map opened **inside** the
-directive — you do not have to close the inner bracket first:
+directive; you do not have to close the inner bracket first:
 
 ```go
 v, _ := j.Parse("sum<[1, 2>") // note: no ']' before '>'
@@ -143,7 +143,7 @@ The `>` closes both the open list and the directive at once. See the
 
 ## Where to go next
 
-- [How-to guides](guide.md) — focused recipes.
-- [Reference](reference.md) — every option, type and counter.
-- [Concepts](concepts.md) — the engine relationship, the design
+- [How-to guides](guide.md). Focused recipes.
+- [Reference](reference.md). Every option, type and counter.
+- [Concepts](concepts.md). The engine relationship, the design
   trade-offs, and the differences from the TypeScript version.

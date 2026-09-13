@@ -1,7 +1,7 @@
 # Concepts: how the directive plugin works (Go)
 
 This is the *why* and *how* for the Go port (`tabnasdirective`). You do
-not need it to use the plugin — reach for it when debugging a grammar,
+not need it to use the plugin; reach for it when debugging a grammar,
 building something with `Custom`, or to understand the engine
 relationship and the deliberate differences from the canonical
 TypeScript implementation. The [reference](reference.md) lists *what*;
@@ -16,16 +16,16 @@ your input ──▶ [ tabnas engine ] ──▶ value
               host grammar   directive plugin
 ```
 
-- **tabnas** — the parser engine (`github.com/tabnas/parser/go`), and
+- **tabnas**. The parser engine (`github.com/tabnas/parser/go`), and
   the plugin's only dependency. It ships *no* grammar: just a
   matcher-based lexer and a rule-based parser driven by grammar specs.
   The `Rule`, `Context`, `Tin`, `RuleSpec`, `AltSpec`, `StateAction` and
   `AltCond` types are all tabnas types.
-- **a host grammar** — any grammar installed onto a `*tabnas.Tabnas`
+- **a host grammar**. Any grammar installed onto a `*tabnas.Tabnas`
   that defines the usual `val` / `list` / `map` / `pair` / `elem` rules.
   The directive layers onto it. This repo's tests use a deliberately
   small one (`go/mini_grammar_test.go`).
-- **directive** — this plugin. It extends the host grammar's rules to
+- **directive**. This plugin. It extends the host grammar's rules to
   recognise directive tokens, which is why it operates on an instance
   with a grammar already installed, not a bare engine.
 
@@ -40,27 +40,27 @@ finishes, and let that action assign or transform the resulting node.
 
 Two shapes:
 
-- **Open-only** — consumes a single value after the open token (`@foo`).
-- **Open + close** — consumes everything between open and close,
+- **Open-only**. Consumes a single value after the open token (`@foo`).
+- **Open + close**. Consumes everything between open and close,
   including structured bodies (`sum<1, 2, 3>`).
 
 
 ## The rule model it plugs into
 
-The parser is rule-based. Every parse step sits inside some rule — `val`,
+The parser is rule-based. Every parse step sits inside some rule: `val`,
 `list`, `elem`, `map`, `pair`. Each rule has **alternates**: ordered
 `*AltSpec` values that decide which branch to take when the rule opens or
 closes.
 
 The plugin weaves the directive into this model in three places:
 
-1. **Open-rules** (default `val`) — get an open-alt that matches the open
+1. **Open-rules** (default `val`). Get an open-alt that matches the open
    token and *pushes* (`P: name`) into a new rule named after the
    directive.
-2. **Close-rules** (default `list`, `elem`, `map`, `pair`) — get a
+2. **Close-rules** (default `list`, `elem`, `map`, `pair`). Get a
    close-alt that matches the close token so they stop consuming siblings
    at the directive boundary.
-3. **Directive rule** — a brand-new rule whose job is to parse one value
+3. **Directive rule**. A brand-new rule whose job is to parse one value
    (`P: "val"`), optionally look for the close token, and fire the
    action.
 
@@ -84,7 +84,7 @@ so outer rules again see the close token as untagged.
 ## Boundary closing
 
 The close token closes more than the directive: it also terminates a
-list or map opened **inside** the body. That is why `sum<[1, 2>` parses —
+list or map opened **inside** the body. That is why `sum<[1, 2>` parses:
 the `>` closes the open list and the directive together, no `]` needed.
 Each close-rule gained a close-alt that fires on the close token while
 `dr_<NAME>` is `1`, plus a `#CA <close>` variant for a trailing comma.
@@ -99,8 +99,8 @@ with counters set on the directive-rule push:
 
 | `Close` present? | `dlist`, `dmap` inside the body |
 | ---------------- | ------------------------------- |
-| yes              | reset to 0 — implicits allowed  |
-| no               | raised to 1 — implicits suppressed |
+| yes              | reset to 0, implicits allowed  |
+| no               | raised to 1, implicits suppressed |
 
 The host grammar reads these (the mini grammar only starts an implicit
 list when `r.N["dlist"] != 1`).
@@ -130,7 +130,7 @@ fresh `#CD_<NAME>`.
 `Custom` runs last and is handed the resolved `OPEN` / `CLOSE` Tins
 (`CLOSE == -1` when none), so you can install extra alternates that match
 the directive's tokens without re-resolving them. Those Tins are only
-stable after the plugin's own wiring — hence the callback fires at the
+stable after the plugin's own wiring; hence the callback fires at the
 end.
 
 
@@ -139,7 +139,7 @@ end.
 The plugin is purely additive: it uses public engine APIs (`j.Token`,
 `j.Rule`, `j.Grammar`, `j.Config`) to register tokens and extend rule
 specs. Mix it freely with other plugins. The one shared resource to
-watch is the fixed-token table — two plugins wanting the same open
+watch is the fixed-token table: two plugins wanting the same open
 sequence collide, and the second registration returns an error.
 
 
@@ -147,13 +147,13 @@ sequence collide, and the second registration returns an error.
 
 TypeScript is canonical; this Go port mirrors its option names, defaults
 and the shared `../test/spec/*.tsv` conformance fixtures (both runtimes
-pass identical fixtures). The following differences are **intentional** —
+pass identical fixtures). The following differences are **intentional**:
 they stem from Go's static typing and engine-API shape, not from drift:
 
 | Area | TypeScript | Go |
 | ---- | ---------- | --- |
 | **Constructor** | `j.use(Directive, options)` (chainable, throws on error). | `tabnasdirective.Apply(j, opts)` returns `(*Tabnas, error)`; or `j.Use(Directive, map[string]any{...})` with named keys. |
-| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string slice, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. |
+| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string slice, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only; build the map explicitly. |
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (an omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. |
 | **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while the Go `Options` struct is closed, so the path resolves in the plugin-options namespace: `"custom.x"` reads `j.PluginOptions("custom")["x"]` at fire time. |
 | **Action return value** | A `StateAction` may return a `Token`; an error token halts the parse. | Same via the `TokenAction` form (`func(r, ctx) any`); a returned `*tabnas.Token` with `Err` set halts the parse, other tokens are ignored. |

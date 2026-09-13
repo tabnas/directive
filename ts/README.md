@@ -1,9 +1,9 @@
-# @tabnas/directive — directive syntax for the tabnas parser
+# @tabnas/directive: directive syntax for the tabnas parser
 
 Adds directive syntax to the [tabnas](https://github.com/tabnas/parser)
-parser. A directive is a token sequence (e.g. `@name`, `add<1,2>`) that
-triggers custom parsing behaviour. It is a plugin for the tabnas engine —
-its only dependency — and layers onto whatever host grammar provides the
+parser. A directive is a token sequence (for example `@name`, `add<1,2>`) that
+triggers custom parsing behaviour. It is a plugin for the tabnas engine
+(its only dependency) and layers onto whatever host grammar provides the
 standard `val` / `list` / `map` / `pair` rules. TypeScript (canonical)
 and Go ports share the same API shape and test specs.
 
@@ -57,4 +57,4 @@ small grammar. See the [root README](../README.md) and
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

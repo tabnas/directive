@@ -24,7 +24,7 @@ import (
 ```
 
 `tabnasdirective.VERSION` is the current version string. It always equals
-`ts/package.json` "version" — `TestVersionMatchesPackageJSON` fails the build
+`ts/package.json` "version"; `TestVersionMatchesPackageJSON` fails the build
 if the two drift.
 
 
@@ -34,11 +34,11 @@ if the two drift.
 func Apply(j *tabnas.Tabnas, opts DirectiveOptions) (*tabnas.Tabnas, error)
 ```
 
-The typed convenience constructor — the Go equivalent of TypeScript's
+The typed convenience constructor, the Go equivalent of TypeScript's
 `j.use(Directive, options)`. It forwards `opts` to `j.Use` as the plugin
 option map and returns the instance (for chaining) plus any registration
 error: a duplicate open token, or a grammar build failure. **The plugin
-never panics** — every failure path is reported through this `error`.
+never panics**: every failure path is reported through this `error`.
 
 `j` must already have a host grammar installed (one defining the `val` /
 `list` / `map` / `pair` rules).
@@ -107,11 +107,11 @@ mutate `rule.Parent.Node` instead and leave `rule.Node` unset.
 
 Three forms are accepted (matching TS `action: StateAction | string`):
 
-- `Action` (or a bare `func(rule, ctx)`) — the classic callback.
-- `TokenAction` (or a bare `func(rule, ctx) any`) — may return a
+- `Action` (or a bare `func(rule, ctx)`). The classic callback.
+- `TokenAction` (or a bare `func(rule, ctx) any`). May return a
   `*tabnas.Token`; a token with `Err` set halts the parse (TS: the `bc`
   hook returns the token to the engine), other tokens are ignored.
-- `string` — a dotted path resolved on the parser options each time the
+- `string`. A dotted path resolved on the parser options each time the
   directive fires; the resolved value becomes `rule.Node`. The TS
   options object is open, Go's `Options` struct is closed, so the path
   resolves in the plugin-options namespace: `"custom.x"` reads
@@ -134,7 +134,7 @@ type RuleMod struct {
 `Open` maps host rule names to modifications that detect the open token
 (push into the directive rule). `Close` maps host rule names to
 modifications that detect the close token (so they stop consuming
-siblings) — only meaningful when `Close` is set. A `nil` `RuleMod` entry
+siblings), only meaningful when `Close` is set. A `nil` `RuleMod` entry
 is normalised to `&RuleMod{}`.
 
 There is no comma-string / string-slice shorthand (a TypeScript-only
@@ -181,9 +181,9 @@ For a directive named `NAME`:
 | `#CD_<NAME>` | only if `Close` is set **and** not already a fixed token   | `Close` |
 
 When `Close` collides with an existing fixed token (a close character
-shared across directives) the existing token is reused — the plugin
+shared across directives) the existing token is reused (the plugin
 looks up its registered name via `j.TinName` so the grammar spec
-resolves to the same `Tin` — and no new `#CD_<NAME>` is created.
+resolves to the same `Tin`) and no new `#CD_<NAME>` is created.
 
 
 ## Group tags
@@ -211,8 +211,8 @@ body:
 
 | `Close` present? | `dlist` / `dmap` inside the body |
 | ---------------- | -------------------------------- |
-| yes              | 0 — implicits allowed (the close bounds the body) |
-| no               | 1 — implicits suppressed (so the directive consumes exactly one value) |
+| yes              | 0, implicits allowed (the close bounds the body) |
+| no               | 1, implicits suppressed (so the directive consumes exactly one value) |
 
 
 ## Errors

@@ -3,8 +3,8 @@
 Directive-syntax plugin for the
 [`tabnas`](https://github.com/tabnas/parser) parser.
 
-A *directive* is a token sequence — `@name` (open-only) or `add<1,2>`
-(open + close) — that pushes into a dedicated rule and fires an action
+A *directive* is a token sequence, `@name` (open-only) or `add<1,2>`
+(open + close), that pushes into a dedicated rule and fires an action
 to transform the parsed body. This is the Go port of the canonical
 TypeScript implementation in [`../ts`](../ts); the TypeScript version is
 authoritative and this package tracks it. A few intentional differences
@@ -21,7 +21,7 @@ canonical TypeScript docs are in [`../ts/doc/`](../ts/doc).
 The plugin's only dependency is the tabnas engine
 (`github.com/tabnas/parser/go`). It modifies host-grammar rules (`val`,
 `list`, `map`, `pair`), so you apply it to a `*tabnas.Tabnas` instance
-that already has a grammar installed — not a bare engine. A minimal host
+that already has a grammar installed, not a bare engine. A minimal host
 grammar is in [`mini_grammar_test.go`](mini_grammar_test.go).
 
 ## Install

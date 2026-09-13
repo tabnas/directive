@@ -16,7 +16,7 @@ j.Use(hostGrammar) // provides val / list / map / pair
 ```
 
 `tabnasdirective.Apply` returns `(*tabnas.Tabnas, error)`; the examples
-elide the error for brevity — check it in real code. The plugin never
+elide the error for brevity; check it in real code. The plugin never
 panics.
 
 
@@ -88,7 +88,7 @@ tabnasdirective.Apply(j, tabnasdirective.DirectiveOptions{
 
 A directive that can appear as a whole map entry (a `pair`) as well as a
 value can, in the `pair` branch, mutate `r.Parent.Node` instead of
-setting `r.Node` — for example to merge a looked-up object into the
+setting `r.Node`, for example to merge a looked-up object into the
 surrounding map:
 
 ```go
@@ -126,7 +126,7 @@ Rules: &tabnasdirective.RulesOption{
 },
 ```
 
-The condition receives `(rule, ctx)` and returns a `bool` — the same
+The condition receives `(rule, ctx)` and returns a `bool`, the same
 `AltCond` shape the engine uses everywhere.
 
 
