@@ -17,7 +17,7 @@ register_host_grammar(&mut parser); // provides val / list / map / pair
 ```
 
 `apply` returns `Result<(), DirectiveError>`; the examples elide the
-error for brevity — check it in real code. The plugin never panics.
+error for brevity; check it in real code. The plugin never panics.
 
 
 ## Wrap an arbitrary body with a close token
@@ -77,7 +77,7 @@ apply(
 
 Note that `with_rules` is a **complete override**, as in Go: supplying
 only the open direction drops the close-rule defaults too. TypeScript
-deep-merges its defaults into a partial `rules` instead — an intentional
+deep-merges its defaults into a partial `rules` instead, an intentional
 divergence, tabulated in [`../../docs/reference.md`](../../docs/reference.md).
 Set both directions when you need both.
 
@@ -86,7 +86,7 @@ Set both directions when you need both.
 
 A directive that can appear as a whole map entry (a `pair`) as well as a
 value can, in the `pair` branch, mutate the parent's node instead of
-setting its own — for example to merge a looked-up map into the
+setting its own, for example to merge a looked-up map into the
 surrounding map.
 
 This is the one place to borrow the node cell rather than call
@@ -136,7 +136,7 @@ when the condition returns `true`:
 )
 ```
 
-The condition receives `(&mut Rule, &mut Context)` and returns `bool` —
+The condition receives `(&mut Rule, &mut Context)` and returns `bool`,
 the same shape the engine's `alt_condition` uses everywhere.
 
 
@@ -144,8 +144,8 @@ the same shape the engine's `alt_condition` uses everywhere.
 
 Like TypeScript's `action: 'a.b.c'`, a path action resolves a dotted
 path on the parser options at fire time. The TS options object is open
-(arbitrary top-level keys), while Rust's `Options` struct is closed —
-like Go's — so the Rust path resolves in the plugin-options namespace:
+(arbitrary top-level keys), while Rust's `Options` struct is closed
+(like Go's), so the Rust path resolves in the plugin-options namespace:
 
 ```rust
 apply(
@@ -166,7 +166,7 @@ works just as well when the value is not option-driven.
 
 ## Report a failure from an action
 
-Return `Err(ActionError)` to abort the parse under your own code — the
+Return `Err(ActionError)` to abort the parse under your own code, the
 Rust spelling of a TypeScript action returning an error token:
 
 ```rust
@@ -177,8 +177,8 @@ Rust spelling of a TypeScript action returning an error token:
 // parser.parse("strict<a>") -> Err, error.code == "strict_body"
 ```
 
-To hand a token back to the engine instead — the full TypeScript
-`Token | void` contract — use `with_token_action`. A token carrying an
+To hand a token back to the engine instead (the full TypeScript
+`Token | void` contract), use `with_token_action`. A token carrying an
 error code halts the parse; any other token is forwarded and otherwise
 ignored:
 
@@ -250,7 +250,7 @@ Conformance rows live in `../../test/spec/*.tsv`. Each row is one of:
 
 Blank lines and `#`-prefixed lines are ignored. The TypeScript, Go and
 Rust suites load the same files, so a new row is exercised by all three
-runtimes — but a new FILE has to be wired into each suite by hand,
+runtimes, but a new FILE has to be wired into each suite by hand,
 because what varies per case is the directive and a directive is a
 function.
 

@@ -161,7 +161,7 @@ same character sequence as their open token will collide.
   its option names, default behaviour, and test specs
   (`test/spec/*.tsv`). Differences that follow from Go's static
   typing or the engine API are intentional and listed in
-  [Reference → TypeScript/Go differences](reference.md#typescript--go-differences).
+  [Reference, TypeScript / Go / Rust differences](reference.md#typescript--go--rust-differences).
 - **Fail loudly.** Re-registering an open token throws (TypeScript) or
   returns an error (Go — the plugin never panics) rather than silently
   overwriting. A close token without its open produces a parse error,

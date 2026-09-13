@@ -30,7 +30,7 @@ pub fn apply(parser: &mut Tabnas, options: DirectiveOptions)
 ```
 
 Registers the directive through `Tabnas::use_plugin`, so it is
-re-applied to derived instances. Returns any registration error — a
+re-applied to derived instances. Returns any registration error: a
 duplicate open token, or a grammar build failure. The plugin never
 panics; a panic inside a user callback is contained by the engine and
 surfaces as a `PluginError`.
@@ -94,7 +94,7 @@ pub enum DirectiveAction {
 | -------- | ------------------- |
 | `None`   | No action. The directive's node stays the empty map seeded by the `bo` hook. |
 | `Call`   | `Fn(&mut Rule, &mut Context) -> Result<(), ActionError>`. The classic form: call `set_node` to assign the result. `Err` aborts the parse under that code. |
-| `Token`  | `Fn(&mut Rule, &mut Context) -> Result<Option<Token>, ActionError>`. May hand a token back to the engine — the TypeScript `Token \| void` contract. A token carrying an error code halts the parse; any other token is forwarded and otherwise ignored. |
+| `Token`  | `Fn(&mut Rule, &mut Context) -> Result<Option<Token>, ActionError>`. May hand a token back to the engine, the TypeScript `Token \| void` contract. A token carrying an error code halts the parse; any other token is forwarded and otherwise ignored. |
 | `Path`   | A dotted path resolved against the parse's own resolved options when the directive fires; the resolved value becomes the directive's node. TypeScript resolves from the open options object; Rust's `Options` struct is closed, like Go's, so the path resolves in the plugin-options namespace: `"custom.x"` reads `parser.plugin_options("custom")["x"]`. A missing segment resolves to `Value::Undefined`. |
 
 
@@ -106,7 +106,7 @@ pub fn set_node(rule: &mut Rule, value: Value);
 
 Sets a rule's node value. **A rule pushed by the engine SHARES its
 parent's node cell**, so writing through `rule.node.borrow_mut()` would
-overwrite the parent's node too. `set_node` installs a fresh cell — it
+overwrite the parent's node too. `set_node` installs a fresh cell; it
 is what `rule.node = …` means in the canonical TypeScript engine, and
 what the engine's own builtin `@val-bo` / `@map-bo` / `@list-bo` actions
 do.
@@ -122,8 +122,8 @@ shares: pushing onto an enclosing list, or merging into the map behind a
 | --------------------- | --------------------------------------------------------------------- |
 | `rule.child_node`     | The parsed body. `Value::Undefined` when the directive is empty.       |
 | `rule.node`           | The result cell. Assign via `set_node`.                                |
-| `rule.parent_node`    | `Option<Rc<RefCell<Value>>>` — the parent rule's node cell.            |
-| `rule.parent_rule`    | `Option<Rc<RuleSnapshot>>` — `parent.name` says where the directive matched. |
+| `rule.parent_node`    | `Option<Rc<RefCell<Value>>>`, the parent rule's node cell.            |
+| `rule.parent_rule`    | `Option<Rc<RuleSnapshot>>`; `parent.name` says where the directive matched. |
 | `rule.n["dr_<NAME>"]` | `1` while inside this directive. See [Counters](#counters).            |
 
 
@@ -170,7 +170,7 @@ pub struct DirectiveConfig {
 pub struct DirectiveError(pub String);
 ```
 
-A registration failure — a duplicate open token, or a grammar the engine
+A registration failure: a duplicate open token, or a grammar the engine
 refused. Implements `Display` and `std::error::Error`, and converts to
 and from `tabnas::PluginError`, so `apply` and `use_plugin` report the
 same thing.

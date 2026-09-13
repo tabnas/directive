@@ -74,7 +74,7 @@ new Tabnas().use(hostGrammar).use(Directive, {
 ```
 
 A common use is a directive that can appear as a whole map entry (a
-`pair`) as well as a value — for example `@key` that merges a looked-up
+`pair`) as well as a value, for example `@key` that merges a looked-up
 object into the surrounding map. In the `pair` branch your action
 mutates `rule.parent.node` instead of setting `rule.node`:
 

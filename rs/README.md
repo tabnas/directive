@@ -3,8 +3,8 @@
 Directive-syntax plugin for the
 [`tabnas`](https://github.com/tabnas/parser) parser engine.
 
-A *directive* is a token sequence — `@name` (open-only) or `add<1,2>`
-(open + close) — that pushes into a dedicated rule and fires an action
+A *directive* is a token sequence, `@name` (open-only) or `add<1,2>`
+(open + close), that pushes into a dedicated rule and fires an action
 to transform the parsed body. This is the Rust port of the canonical
 TypeScript implementation in [`../ts`](../ts); the TypeScript version is
 authoritative and this crate tracks it. A few intentional differences
@@ -21,14 +21,14 @@ canonical TypeScript docs are in [`../ts/doc/`](../ts/doc).
 
 The plugin's only dependency is the tabnas engine (the `tabnas` crate).
 It modifies host-grammar rules (`val`, `list`, `map`, `pair`), so you
-apply it to a `Tabnas` instance that already has a grammar installed —
+apply it to a `Tabnas` instance that already has a grammar installed,
 not a bare engine. A minimal host grammar is in
 [`tests/common/mini_grammar.rs`](tests/common/mini_grammar.rs).
 
 ## Install
 
 The `tabnas` crate is not published to a registry, so the engine is
-consumed as a **sibling checkout** — the standard tabnas development
+consumed as a **sibling checkout**, the standard tabnas development
 model. Clone `https://github.com/tabnas/parser` next to this repository
 and point at it:
 
@@ -67,7 +67,7 @@ parent's node cell, so writing through `rule.node.borrow_mut()` would
 overwrite the parent's node as well; `set_node` installs a fresh cell,
 which is what `rule.node = …` means in the canonical TypeScript engine.
 Borrow the cell directly only to mutate a container the rule genuinely
-shares — pushing onto an enclosing list, or merging into the map behind
+shares: pushing onto an enclosing list, or merging into the map behind
 a `pair`.
 
 ## Build and test
@@ -83,8 +83,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 Or, from the repository root, `make test-rs` runs the tests and clippy.
 
-The suite runs the shared `../test/spec/*.tsv` conformance fixtures —
-the same files the TypeScript and Go suites run — against the mini host
+The suite runs the shared `../test/spec/*.tsv` conformance fixtures
+(the same files the TypeScript and Go suites run) against the mini host
 grammar. A row green in one runtime and red in another is a failure, not
 a discrepancy.
 
