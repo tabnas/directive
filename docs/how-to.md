@@ -101,7 +101,7 @@ directive.Apply(j, directive.DirectiveOptions{
 ```
 
 The default when `rules` is omitted is `open: "val", close:
-"list,elem,map,pair"` (see [Reference](reference.md#defaults)).
+"list,elem,map,pair"` (see [Reference](reference.md#rules-defaults)).
 
 
 ## How to attach a condition to a rule modification
@@ -161,7 +161,7 @@ directive.Apply(j, directive.DirectiveOptions{
 })
 ```
 
-See [Reference → TypeScript/Go differences](reference.md#typescript--go-differences).
+See [Reference, TypeScript / Go / Rust differences](reference.md#typescript--go--rust-differences).
 
 
 ## How to run additional rule tweaks after the directive is set up
