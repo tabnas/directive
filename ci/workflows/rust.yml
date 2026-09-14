@@ -56,8 +56,13 @@ jobs:
           path: directive
 
       # Engine main, not a release: the crate is unpublished, so this is
-      # the only resolution there is. It is also the one CI already uses
-      # for Go, so both ports are measured against the same engine.
+      # the only resolution there is.
+      #
+      # Note this is Rust ONLY. Unlike tabnas/debug, the Go module here
+      # resolves from the module proxy in CI exactly as it does locally --
+      # no `replace`, no vendored tree, no `go.work` (AGENTS.md, "The Go
+      # module resolves its dependencies from the module proxy"). So this
+      # checkout establishes nothing about the Go port.
       - name: Clone the sibling engine
         run: git clone --depth 1 https://github.com/tabnas/parser.git parser
 
