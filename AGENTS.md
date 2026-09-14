@@ -568,7 +568,7 @@ proved locally, and nothing checks it remotely.
 to promote it — it needs no `run-rs` input and no change in
 `tabnas/.github`. Its commands live in `ci/rust/run.sh`, which you can
 run yourself and which is stricter than `make test-rs`: it adds
-`cargo fmt --all --check` and a build, and it clones nothing, so the
+`cargo fmt --check` and a build, and it clones nothing, so the
 sibling `../parser` checkout has to be there already.
 
 Until it is promoted, run `make test-rs` — or `ci/rust/run.sh` for what
