@@ -234,9 +234,9 @@ pub fn register_mini_grammar(parser: &mut Tabnas) {
             let Some(token) = rule.o0() else { return };
             let key = match &token.val {
                 Value::String(text) => text.clone(),
-                _ => token.src.clone(),
+                _ => token.src.to_string(),
             };
-            rule.u.insert("key".to_string(), Value::String(key));
+            rule.u_mut().insert("key".to_string(), Value::String(key));
         });
 
         spec.add_open(open)
