@@ -52,7 +52,7 @@ fn set_node(rule: &mut Rule, value: Value) {
 
 /// Append `value` to a list node, ignoring a node that is not a list.
 fn list_push(node: &mut Value, value: Value) {
-    if let Value::Array(items) = node {
+    if let Some(items) = node.as_array_mut() {
         items.push(value);
     }
 }
@@ -116,7 +116,7 @@ pub fn register_mini_grammar(parser: &mut Tabnas) {
         // Seed the list with the already-parsed scalar value.
         implicit.add_action(|rule, _context| {
             let seed = rule.node.borrow().clone();
-            set_node(rule, Value::Array(vec![seed]));
+            set_node(rule, Value::array(vec![seed]));
         });
 
         spec.add_close(AltSpec {
@@ -191,7 +191,7 @@ pub fn register_mini_grammar(parser: &mut Tabnas) {
     // list: an array `[ a, b, ... ]`.
     parser.define_rule("list", |spec| {
         spec.add_bo(|rule, _context| {
-            set_node(rule, Value::Array(Vec::new()));
+            set_node(rule, Value::array(Vec::new()));
         });
         spec.add_open(AltSpec {
             s: vec![vec![TIN_OS], vec![TIN_CS]],
@@ -219,7 +219,7 @@ pub fn register_mini_grammar(parser: &mut Tabnas) {
                 return;
             };
             let child = rule.child_node.clone();
-            if let Value::Object(map) = &mut *rule.node.borrow_mut() {
+            if let Some(map) = rule.node.borrow_mut().as_object_mut() {
                 map.insert(key, child.unwrap_undefined());
             }
         });
