@@ -42,7 +42,7 @@ fn string(text: &str) -> Value {
 }
 
 fn object(entries: &[(&str, Value)]) -> Value {
-    Value::Object(
+    Value::object(
         entries
             .iter()
             .map(|(key, value)| ((*key).to_string(), value.clone()))
@@ -70,7 +70,7 @@ fn sum_options() -> DirectiveOptions {
         .with_action(|rule, _ctx| {
             let mut total = 0.0_f64;
             if let Value::Array(items) = &rule.child_node {
-                for item in items {
+                for item in items.iter() {
                     if let Value::Number(number) = item {
                         total += number;
                     }
@@ -93,7 +93,7 @@ fn readme_use_and_tutorial_open_only_directive() {
     assert_parses(
         &parser,
         "[@a, @b, 1]",
-        Value::Array(vec![string("A"), string("B"), Value::Number(1.0)]),
+        Value::array(vec![string("A"), string("B"), Value::Number(1.0)]),
     );
     assert_parses(
         &parser,
@@ -164,7 +164,7 @@ fn guide_wrap_an_arbitrary_body() {
     assert_parses(
         &parser,
         "([1, 2])",
-        Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]),
+        Value::array(vec![Value::Number(1.0), Value::Number(2.0)]),
     );
 }
 
@@ -195,7 +195,7 @@ fn guide_share_a_close_token() {
     assert_parses(
         &parser,
         "[foo<a>, bar<b>]",
-        Value::Array(vec![string("FOO"), string("BAR")]),
+        Value::array(vec![string("FOO"), string("BAR")]),
     );
 
     let error = apply(&mut parser, DirectiveOptions::new("baz", "foo<"))
@@ -239,8 +239,8 @@ fn guide_restrict_where_recognised_and_merge_at_a_pair() {
                     if let (Some(parent_node), Value::Object(fields)) =
                         (rule.parent_node.clone(), &value)
                     {
-                        if let Value::Object(target) = &mut *parent_node.borrow_mut() {
-                            for (field, field_value) in fields {
+                        if let Some(target) = parent_node.borrow_mut().as_object_mut() {
+                            for (field, field_value) in fields.iter() {
                                 target.insert(field.clone(), field_value.clone());
                             }
                             return Ok(());
@@ -281,7 +281,7 @@ fn guide_gate_a_rule_modification_with_a_condition() {
     .expect("gated registers");
 
     assert_parses(&parser, "gated<a>", string("GATED"));
-    assert_parses(&parser, "[gated<a>]", Value::Array(vec![string("GATED")]));
+    assert_parses(&parser, "[gated<a>]", Value::array(vec![string("GATED")]));
 }
 
 #[test]
@@ -350,7 +350,7 @@ fn guide_run_extra_wiring_with_custom() {
 
     // The extra alt only fires at depth 0, so a nested directive still
     // takes the plugin's own path.
-    assert_parses(&parser, "[@a]", Value::Array(vec![string("SUB")]));
+    assert_parses(&parser, "[@a]", Value::array(vec![string("SUB")]));
 }
 
 #[test]

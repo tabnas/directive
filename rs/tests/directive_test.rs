@@ -167,12 +167,12 @@ fn adder() {
 
 #[test]
 fn inject() {
-    let source = Value::Object(
+    let source = Value::object(
         [
             ("a".to_string(), Value::String("A".into())),
             (
                 "b".to_string(),
-                Value::Object(
+                Value::object(
                     [("b".to_string(), Value::Number(1.0))]
                         .into_iter()
                         .collect(),
@@ -180,7 +180,7 @@ fn inject() {
             ),
             (
                 "c".to_string(),
-                Value::Array(vec![Value::Number(2.0), Value::Number(3.0)]),
+                Value::array(vec![Value::Number(2.0), Value::Number(3.0)]),
             ),
         ]
         .into_iter()
@@ -210,8 +210,8 @@ fn inject() {
                     if let (Some(parent_node), Value::Object(fields)) =
                         (rule.parent_node.clone(), &value)
                     {
-                        if let Value::Object(target) = &mut *parent_node.borrow_mut() {
-                            for (field, field_value) in fields {
+                        if let Some(target) = parent_node.borrow_mut().as_object_mut() {
+                            for (field, field_value) in fields.iter() {
                                 target.insert(field.clone(), field_value.clone());
                             }
                             return Ok(());
@@ -261,7 +261,7 @@ fn action_option_prop() {
     // fires, not when the plugin is applied.
     parser.set_plugin_options(
         "custom",
-        Value::Object(
+        Value::object(
             [("x".to_string(), Value::Number(11.0))]
                 .into_iter()
                 .collect(),
@@ -285,10 +285,10 @@ fn action_option_prop_walks_nested_segments() {
 
     parser.set_plugin_options(
         "custom",
-        Value::Object(
+        Value::object(
             [(
                 "deep".to_string(),
-                Value::Object(
+                Value::object(
                     [("x".to_string(), Value::Number(7.0))]
                         .into_iter()
                         .collect(),
@@ -444,7 +444,7 @@ fn open_only_directive_does_not_consume_following_siblings() {
     let parser = upper_parser();
     let value = parser.parse("[@a, @b, 2]").expect("parses");
     assert!(
-        value.deep_equal(&Value::Array(vec![
+        value.deep_equal(&Value::array(vec![
             Value::String("A".into()),
             Value::String("B".into()),
             Value::Number(2.0),
@@ -481,7 +481,7 @@ fn default_rules_are_used_when_rules_is_absent() {
 
     let value = parser.parse("[mrg<1>]").expect("[mrg<1>] parses");
     assert!(
-        value.deep_equal(&Value::Array(vec![Value::String("MRG".into())])),
+        value.deep_equal(&Value::array(vec![Value::String("MRG".into())])),
         "[mrg<1>] => {value}"
     );
 

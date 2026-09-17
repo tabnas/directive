@@ -107,8 +107,8 @@ its `map`, and mutating it in place is exactly the intent.
         .is_some_and(|parent| parent.name == "pair");
     if at_pair {
         if let (Some(parent_node), Value::Object(fields)) = (rule.parent_node.clone(), &value) {
-            if let Value::Object(target) = &mut *parent_node.borrow_mut() {
-                for (field, field_value) in fields {
+            if let Some(target) = parent_node.borrow_mut().as_object_mut() {
+                for (field, field_value) in fields.iter() {
                     target.insert(field.clone(), field_value.clone());
                 }
                 return Ok(());
@@ -154,7 +154,7 @@ apply(
 )?;
 parser.set_plugin_options(
     "custom",
-    Value::Object([("x".to_string(), Value::Number(42.0))].into_iter().collect()),
+    Value::object([("x".to_string(), Value::Number(42.0))].into_iter().collect()),
 );
 // parser.parse("@y") -> 42
 ```

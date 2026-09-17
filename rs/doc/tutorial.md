@@ -119,7 +119,7 @@ apply(
         .with_action(|rule, _ctx| {
             let mut total = 0.0_f64;
             if let Value::Array(items) = &rule.child_node {
-                for item in items {
+                for item in items.iter() {
                     if let Value::Number(number) = item {
                         total += number;
                     }

@@ -550,7 +550,7 @@ fn install(parser: &mut Tabnas, options: &DirectiveOptions) -> Result<(), Direct
 fn register_lifecycle_refs(parser: &mut Tabnas, name: &str, action: DirectiveAction) {
     // bo: seed the directive rule's node with an empty map.
     parser.state_action_with_next_ref(format!("@{name}-bo"), |rule, _context, _next, _out| {
-        set_node(rule, Value::Object(IndexMap::new()));
+        set_node(rule, Value::object(IndexMap::new()));
         Ok(None)
     });
 
