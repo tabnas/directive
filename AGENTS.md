@@ -180,7 +180,8 @@ TS tests: `directive.test.ts` (spec-driven), `doc-examples.test.ts`
 `@tabnas/debug`, below). Go: `directive_test.go`, driven by the same
 `test/spec/*.tsv` and the Go mini grammar. Rust:
 `tests/directive_test.rs` plus `tests/version_test.rs`, driven by the
-same fixtures and the Rust mini grammar. Run `gofmt` and `go vet ./...`
+same fixtures and the Rust mini grammar, and `tests/doc_examples_test.rs`,
+which compiles the doc snippets. Run `gofmt` and `go vet ./...`
 before committing Go; `cargo fmt` and
 `cargo clippy --all-targets --all-features -- -D warnings` before
 committing Rust.

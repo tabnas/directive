@@ -8,9 +8,9 @@ or the [how-to guides](guide.md). The cross-language reference lives in
 The plugin's only dependency is the
 [tabnas](https://github.com/tabnas/parser) parser engine; its types
 (`Rule`, `Context`, `Tin`, `Token`, `Value`, `ActionError`, …) come from
-there. The plugin modifies host grammar rules (`val` / `list` / `map` /
-`pair`), so it is applied to an engine instance that already has a
-grammar installed.
+there. The plugin modifies host grammar rules (`val` / `list` / `elem` /
+`map` / `pair` by default; see [Rules defaults](#rules-defaults)), so it
+is applied to an engine instance that already has a grammar installed.
 
 ```rust
 use tabnas_directive::{

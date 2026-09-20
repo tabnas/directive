@@ -536,3 +536,110 @@ fn directive_error_converts_to_and_from_plugin_error() {
 fn version_is_exported() {
     assert!(!VERSION.is_empty());
 }
+
+#[test]
+fn deriving_from_a_plugin_host_grammar_then_applying_the_directive_works() {
+    // The recommended way round the collision above: derive from an
+    // instance WITHOUT the directive, then apply it to the child. That
+    // works only when the host grammar is itself a plugin, because
+    // `derive` re-runs the parent's plugins and nothing else — a grammar
+    // installed imperatively (`make_mini()`) leaves the child with no
+    // rules at all. concepts.md § "derive and the fixed-token table"
+    // documents this; here it is pinned.
+    let mut base = Tabnas::new();
+    base.use_plugin(
+        tabnas::Plugin::new("mini", |parser, _options| {
+            common::mini_grammar::register_mini_grammar(parser);
+            Ok(())
+        }),
+        None,
+    )
+    .unwrap_or_else(|error| panic!("mini plugin installs: {}", error.0));
+
+    let Ok(mut child) = base.derive(|options| options.tag = "child".into()) else {
+        panic!("deriving without the directive must succeed");
+    };
+    must_apply(
+        &mut child,
+        DirectiveOptions::new("upper", "@").with_action(|rule, _context| {
+            let body = text_of(&rule.child_node).to_uppercase();
+            set_node(rule, Value::String(body));
+            Ok(())
+        }),
+    );
+
+    let value = child.parse("[@a, 1]").expect("[@a, 1] parses in the child");
+    assert!(
+        value.deep_equal(&Value::array(vec![
+            Value::String("A".into()),
+            Value::Number(1.0)
+        ])),
+        "[@a, 1] => {value}"
+    );
+
+    // The parent never had the directive, so `@` is still bare text there.
+    let value = base.parse("@a").expect("@a parses in the parent");
+    assert!(
+        value.deep_equal(&Value::String("@a".into())),
+        "parent @a => {value}, want the bare word"
+    );
+
+    // And the imperative scaffold really does not survive a derive: this
+    // is why the doc says to install the host grammar as a plugin.
+    let Ok(orphan) = make_mini().derive(|options| options.tag = "orphan".into()) else {
+        panic!("deriving a plugin-free instance must succeed");
+    };
+    assert!(
+        orphan.rule_names().is_empty(),
+        "an imperatively built grammar is not re-run by derive, got rules {:?}",
+        orphan.rule_names()
+    );
+}
+
+#[test]
+fn panics_in_user_callbacks_surface_as_errors_not_panics() {
+    // The documented contract: the plugin never panics, and a panic inside
+    // a user callback is contained by the engine. At registration the
+    // custom hook's panic comes back from `apply` as an error naming the
+    // plugin; at parse time an action's panic comes back from `parse` as
+    // an error rather than unwinding into the caller.
+    let mut parser = make_mini();
+    let error = apply(
+        &mut parser,
+        DirectiveOptions::new("boom", "boom<").with_custom(|_parser, _config| {
+            panic!("custom hook panic");
+        }),
+    )
+    .expect_err("a panicking custom hook is a registration error");
+    assert!(
+        error.to_string().contains("panicked") && error.to_string().contains("custom hook panic"),
+        "expected the panic to be reported, got: {error}"
+    );
+
+    let mut parser = make_mini();
+    must_apply(
+        &mut parser,
+        DirectiveOptions::new("bang", "bang<")
+            .with_close(">")
+            .with_action(|_rule, _context| panic!("action panic")),
+    );
+    // The closure hands back plain strings: the engine's error type is
+    // large enough to trip clippy's `result_large_err` if returned as-is.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        parser
+            .parse("bang<a>")
+            .map(|value| value.to_string())
+            .map_err(|error| error.code)
+    }));
+    let Ok(parsed) = result else {
+        panic!("an action's panic must not unwind out of parse");
+    };
+    assert!(
+        parsed.is_err(),
+        "a panicking action must fail the parse, got {parsed:?}"
+    );
+
+    // The instance is still usable afterwards.
+    let value = parser.parse("[1, 2]").expect("[1, 2] still parses");
+    assert!(value.deep_equal(&Value::array(vec![Value::Number(1.0), Value::Number(2.0)])));
+}

@@ -16,7 +16,10 @@ intentional TS / Go / Rust differences.
   `../ts/test/directive.test.ts` and `../go/directive_test.go`. The host
   grammar the tests run against is `tests/common/mini_grammar.rs`
   (`make_mini()`), the Rust twin of `../ts/test/mini-grammar.ts` — keep
-  the three in step. `tests/version_test.rs` pins the version constants.
+  the three in step. `tests/version_test.rs` pins the version constants,
+  and `tests/doc_examples_test.rs` transcribes the snippets in `README.md`
+  and `doc/*.md` as compiled tests, so a doc example that stops compiling
+  or stops producing what the doc claims fails the build.
 - Crate `tabnas-directive`, library `tabnas_directive`. The engine crate
   `tabnas` is a **path dependency on the sibling checkout**
   (`../../parser/rs`) — it is not published to a registry, so there is

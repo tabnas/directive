@@ -221,9 +221,18 @@ registration collides with itself.
 yet have the directive, and apply the directive to the child. The parent
 is left intact by the failed derive either way.
 
-`rs/tests/directive_test.rs` pins this behaviour
-(`deriving_an_instance_that_already_has_the_directive_reports_the_duplicate`)
-so it stays a recorded property rather than an accident.
+That only works when the host grammar is itself a plugin. `derive`
+rebuilds the child by re-running the parent's *plugins*, so a grammar
+installed imperatively through `define_rule` (the repo's own
+`make_mini()` scaffold, say) does not reach the child at all: the child
+has no rules, and applying the directive to it succeeds but parses
+nothing. Install the host grammar through `use_plugin` when you intend
+to derive.
+
+`rs/tests/directive_test.rs` pins both behaviours
+(`deriving_an_instance_that_already_has_the_directive_reports_the_duplicate`
+and `deriving_from_a_plugin_host_grammar_then_applying_the_directive_works`)
+so they stay recorded properties rather than accidents.
 
 
 ## Differences from the TS version
