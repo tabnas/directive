@@ -8,9 +8,9 @@ or the [how-to guides](guide.md). The cross-language reference lives in
 The plugin's only dependency is the
 [tabnas](https://github.com/tabnas/parser) parser engine; its types
 (`Rule`, `Context`, `Tin`, `Token`, `Value`, `ActionError`, …) come from
-there. The plugin modifies host grammar rules (`val` / `list` / `map` /
-`pair`), so it is applied to an engine instance that already has a
-grammar installed.
+there. The plugin modifies host grammar rules (`val` / `list` / `elem` /
+`map` / `pair` by default; see [Rules defaults](#rules-defaults)), so it
+is applied to an engine instance that already has a grammar installed.
 
 ```rust
 use tabnas_directive::{
@@ -59,7 +59,7 @@ them.
 
 | Field    | Type                  | Required | Description                                                             |
 | -------- | --------------------- | -------- | ----------------------------------------------------------------------- |
-| `name`   | `String`              | yes      | Directive name. Rule name and token-name suffix.                        |
+| `name`   | `String`              | yes      | Directive name. Rule name and token-name suffix. Must be non-empty and hold no whitespace; see [Errors](#errors). |
 | `open`   | `String`              | yes      | Open character sequence. Must be unique per instance.                   |
 | `close`  | `Option<String>`      | no       | Close character sequence. `None` (or empty) → the directive consumes a single value. |
 | `action` | `DirectiveAction`     | no       | How the parsed body is transformed. Default `DirectiveAction::None`.    |
@@ -271,6 +271,7 @@ inside the directive body:
 
 | Situation                                             | Behaviour |
 | ----------------------------------------------------- | --------- |
+| Registering a directive whose `name` is empty or holds whitespace | `apply` / `use_plugin` return `Err` (no panic), before anything is registered. The serialized grammar names the open token as `#OD_<NAME>` in a whitespace-split `s` string, so such a directive could never match; TypeScript names tokens by `Tin` and does not validate the name. |
 | Registering a directive whose `open` is already fixed | `apply` / `use_plugin` return `Err` (no panic) |
 | Grammar build failure during registration             | `apply` / `use_plugin` return `Err` (no panic) |
 | Parsing a close token without its open                | engine `unexpected` error |

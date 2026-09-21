@@ -221,9 +221,18 @@ registration collides with itself.
 yet have the directive, and apply the directive to the child. The parent
 is left intact by the failed derive either way.
 
-`rs/tests/directive_test.rs` pins this behaviour
-(`deriving_an_instance_that_already_has_the_directive_reports_the_duplicate`)
-so it stays a recorded property rather than an accident.
+That only works when the host grammar is itself a plugin. `derive`
+rebuilds the child by re-running the parent's *plugins*, so a grammar
+installed imperatively through `define_rule` (the repo's own
+`make_mini()` scaffold, say) does not reach the child at all: the child
+has no rules, and applying the directive to it succeeds but parses
+nothing. Install the host grammar through `use_plugin` when you intend
+to derive.
+
+`rs/tests/directive_test.rs` pins both behaviours
+(`deriving_an_instance_that_already_has_the_directive_reports_the_duplicate`
+and `deriving_from_a_plugin_host_grammar_then_applying_the_directive_works`)
+so they stay recorded properties rather than accidents.
 
 
 ## Differences from the TS version
@@ -241,6 +250,7 @@ API shape, not from drift:
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (an omitted direction keeps its default). | `Some(_)` is a complete override; `None` uses defaults, `Some(RulesOption::new())` uses none. Same as Go. |
 | **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while Rust's `Options` struct is closed, so the path resolves in the plugin-options namespace: `DirectiveAction::Path("custom.x")` reads `parser.plugin_options("custom")["x"]` at fire time. |
 | **Action return value** | A `StateAction` may return a `Token`; an error token halts the parse. | Same via `with_token_action` (`-> Result<Option<Token>, ActionError>`); a token carrying an error code halts the parse, other tokens are forwarded and otherwise ignored. An action may also fail directly with `Err(ActionError)`. |
+| **Directive name** | Any string; the grammar spec names tokens by resolved `Tin`, so the name is only a rule name and a token-name suffix. | The serialized grammar names the open token as `#OD_<name>` in a whitespace-split `s` string, so an empty name or one holding whitespace could never match. Registration rejects it with `Err(DirectiveError)` before anything is installed. |
 | **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns `Err(DirectiveError)` (propagated by `use_plugin` / `apply`) and never panics; a panic inside a user callback is contained by the engine and surfaces as a `PluginError`. |
 | **Assigning a node** | `rule.node = value`. | `set_node(rule, value)`, because a pushed rule shares its parent's node cell, so an assignment must install a fresh one. |
 | **Rule-map ordering** | Object key order. | `BTreeMap`, so host-rule modifications install in a deterministic order. |

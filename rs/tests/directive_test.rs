@@ -536,3 +536,174 @@ fn directive_error_converts_to_and_from_plugin_error() {
 fn version_is_exported() {
     assert!(!VERSION.is_empty());
 }
+
+#[test]
+fn deriving_from_a_plugin_host_grammar_then_applying_the_directive_works() {
+    // The recommended way round the collision above: derive from an
+    // instance WITHOUT the directive, then apply it to the child. That
+    // works only when the host grammar is itself a plugin, because
+    // `derive` re-runs the parent's plugins and nothing else — a grammar
+    // installed imperatively (`make_mini()`) leaves the child with no
+    // rules at all. concepts.md § "derive and the fixed-token table"
+    // documents this; here it is pinned.
+    let mut base = Tabnas::new();
+    base.use_plugin(
+        tabnas::Plugin::new("mini", |parser, _options| {
+            common::mini_grammar::register_mini_grammar(parser);
+            Ok(())
+        }),
+        None,
+    )
+    .unwrap_or_else(|error| panic!("mini plugin installs: {}", error.0));
+
+    let Ok(mut child) = base.derive(|options| options.tag = "child".into()) else {
+        panic!("deriving without the directive must succeed");
+    };
+    must_apply(
+        &mut child,
+        DirectiveOptions::new("upper", "@").with_action(|rule, _context| {
+            let body = text_of(&rule.child_node).to_uppercase();
+            set_node(rule, Value::String(body));
+            Ok(())
+        }),
+    );
+
+    let value = child.parse("[@a, 1]").expect("[@a, 1] parses in the child");
+    assert!(
+        value.deep_equal(&Value::array(vec![
+            Value::String("A".into()),
+            Value::Number(1.0)
+        ])),
+        "[@a, 1] => {value}"
+    );
+
+    // The parent never had the directive, so `@` is still bare text there.
+    let value = base.parse("@a").expect("@a parses in the parent");
+    assert!(
+        value.deep_equal(&Value::String("@a".into())),
+        "parent @a => {value}, want the bare word"
+    );
+
+    // And the imperative scaffold really does not survive a derive: this
+    // is why the doc says to install the host grammar as a plugin.
+    let Ok(orphan) = make_mini().derive(|options| options.tag = "orphan".into()) else {
+        panic!("deriving a plugin-free instance must succeed");
+    };
+    assert!(
+        orphan.rule_names().is_empty(),
+        "an imperatively built grammar is not re-run by derive, got rules {:?}",
+        orphan.rule_names()
+    );
+}
+
+#[test]
+fn panics_in_user_callbacks_surface_as_errors_not_panics() {
+    // The documented contract: the plugin never panics, and a panic inside
+    // a user callback is contained by the engine. At registration the
+    // custom hook's panic comes back from `apply` as an error naming the
+    // plugin; at parse time an action's panic comes back from `parse` as
+    // an error rather than unwinding into the caller.
+    let mut parser = make_mini();
+    let error = apply(
+        &mut parser,
+        DirectiveOptions::new("boom", "boom<").with_custom(|_parser, _config| {
+            panic!("custom hook panic");
+        }),
+    )
+    .expect_err("a panicking custom hook is a registration error");
+    assert!(
+        error.to_string().contains("panicked") && error.to_string().contains("custom hook panic"),
+        "expected the panic to be reported, got: {error}"
+    );
+
+    let mut parser = make_mini();
+    must_apply(
+        &mut parser,
+        DirectiveOptions::new("bang", "bang<")
+            .with_close(">")
+            .with_action(|_rule, _context| panic!("action panic")),
+    );
+    // The closure hands back plain strings: the engine's error type is
+    // large enough to trip clippy's `result_large_err` if returned as-is.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        parser
+            .parse("bang<a>")
+            .map(|value| value.to_string())
+            .map_err(|error| error.code)
+    }));
+    let Ok(parsed) = result else {
+        panic!("an action's panic must not unwind out of parse");
+    };
+    assert!(
+        parsed.is_err(),
+        "a panicking action must fail the parse, got {parsed:?}"
+    );
+
+    // The instance is still usable afterwards.
+    let value = parser.parse("[1, 2]").expect("[1, 2] still parses");
+    assert!(value.deep_equal(&Value::array(vec![Value::Number(1.0), Value::Number(2.0)])));
+}
+
+#[test]
+fn a_name_the_grammar_document_cannot_spell_is_rejected_at_registration() {
+    // The serialized grammar names the open token in a whitespace-split
+    // `s` string ("#OD_<name>"), so a name holding whitespace would split
+    // into two unrelated tokens and the directive could never match; an
+    // empty name has the same fate. Both used to register without a word
+    // and then never fire. Registration now rejects them before anything
+    // is installed: the open token stays free and no rule is created.
+    for name in ["my name", "", "tab\tname"] {
+        let mut parser = make_mini();
+        let error = apply(&mut parser, DirectiveOptions::new(name, "%"))
+            .expect_err("a name holding whitespace, or no name at all, must be rejected");
+        // The message quotes the name in its Debug form, so a tab reads
+        // as `\t` rather than vanishing into the terminal.
+        assert!(
+            error.to_string().contains("whitespace")
+                && error.to_string().contains(&format!("{name:?}")),
+            "name {name:?}: expected the rejection to name the rule, got: {error}"
+        );
+        assert!(
+            parser.fixed("%").is_none(),
+            "name {name:?}: the open token was registered before the rejection"
+        );
+        assert!(
+            !parser.rule_names().iter().any(|rule| rule == name),
+            "name {name:?}: a rule was installed before the rejection"
+        );
+    }
+}
+
+#[test]
+fn spec_loader_keeps_the_shared_codec() {
+    // The Rust loader is the one that can drift from `@tabnas/support`
+    // (test/AGENTS.md), and the rules that matter are the ones that make
+    // a row vanish silently: a `#`-leading line WITH a tab is data, not a
+    // comment; only an exactly empty line is blank; a leading BOM is
+    // dropped; and a row that lacks its expected column is malformed
+    // rather than skipped.
+    let rows = common::spec::parse_rows(
+        "codec.tsv",
+        "\u{feff}# a comment, no tab\n\n#a\t\"A\"\r\nb\\tc\t1\n",
+    );
+    let seen: Vec<(usize, &str, &str)> = rows
+        .iter()
+        .map(|row| (row.line, row.input.as_str(), row.expected.as_str()))
+        .collect();
+    assert_eq!(seen, [(3, "#a", "\"A\""), (4, "b\tc", "1")]);
+
+    let outcome = std::panic::catch_unwind(|| {
+        common::spec::parse_rows("codec.tsv", "a\t1\nno tab here\n").len()
+    });
+    let Err(payload) = outcome else {
+        panic!("a row without an expected column must not load");
+    };
+    let message = payload
+        .downcast_ref::<String>()
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        message.contains("codec.tsv:2"),
+        "the failure must name the file and line, got: {message}"
+    );
+}

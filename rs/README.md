@@ -20,9 +20,9 @@ The four-quadrant Rust docs live in [`doc/`](doc):
 canonical TypeScript docs are in [`../ts/doc/`](../ts/doc).
 
 The plugin's only dependency is the tabnas engine (the `tabnas` crate).
-It modifies host-grammar rules (`val`, `list`, `map`, `pair`), so you
-apply it to a `Tabnas` instance that already has a grammar installed,
-not a bare engine. A minimal host grammar is in
+It modifies host-grammar rules (`val`, `list`, `elem`, `map`, `pair`
+by default), so you apply it to a `Tabnas` instance that already has a
+grammar installed, not a bare engine. A minimal host grammar is in
 [`tests/common/mini_grammar.rs`](tests/common/mini_grammar.rs).
 
 ## Install

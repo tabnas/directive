@@ -63,33 +63,51 @@ fn spec_dir() -> PathBuf {
 }
 
 /// One fixture row: source line number, input, expected column.
-struct Row {
-    line: usize,
-    input: String,
-    expected: String,
+pub struct Row {
+    pub line: usize,
+    pub input: String,
+    pub expected: String,
 }
 
-/// Read a fixture, skipping blank lines and `#` comments. There is no
-/// header line, and the columns are positional.
+/// Read a fixture. There is no header line, and the columns are
+/// positional.
 fn load(file_name: &str) -> Vec<Row> {
     let path = spec_dir().join(file_name);
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+    parse_rows(file_name, &text)
+}
 
+/// Split fixture text into rows, keeping to the shared codec of
+/// `@tabnas/support` (its Go half, `spec.go`, states the rules in full):
+/// a leading BOM is dropped; an empty line is skipped; a line that starts
+/// with `#` and holds NO tab is a comment, while a `#`-leading line WITH
+/// a tab is data, so an input starting with `#` stays usable; and a data
+/// row is split on every tab with positional columns. A row without an
+/// `expected` column is malformed, and fails here naming `<file>:<line>`
+/// rather than being dropped — a row only the other runtimes run proves
+/// nothing.
+pub fn parse_rows(file_name: &str, text: &str) -> Vec<Row> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     text.lines()
         .enumerate()
         .filter_map(|(index, raw)| {
             // A trailing \r is stripped, so the files work with either
             // line ending.
             let line = raw.strip_suffix('\r').unwrap_or(raw);
-            if line.trim().is_empty() || line.starts_with('#') {
+            if line.is_empty() || (line.starts_with('#') && !line.contains('\t')) {
                 return None;
             }
             // Rows are split on every tab and the columns are positional;
             // no row has a tab inside `expected`.
             let mut columns = line.split('\t');
-            let input = columns.next()?;
-            let expected = columns.next()?;
+            let input = columns.next().unwrap_or_default();
+            let Some(expected) = columns.next() else {
+                panic!(
+                    "{file_name}:{}: expected at least 2 tab-separated columns, found 1",
+                    index + 1
+                )
+            };
             Some(Row {
                 line: index + 1,
                 input: unescape(input),
