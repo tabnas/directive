@@ -62,11 +62,11 @@ const DEFAULT_OPEN_RULES: &str = "val";
 /// The default host rules a directive modifies for its CLOSE token.
 const DEFAULT_CLOSE_RULES: &str = "list,elem,map,pair";
 
-/// A directive registration failure: a duplicate open token, or a grammar
-/// that the engine refused to install.
+/// A directive registration failure: an unusable name, a duplicate open
+/// token, or a grammar that the engine refused to install.
 ///
-/// The TypeScript plugin *throws* for both; the Rust port returns them,
-/// exactly as the Go port does. The plugin itself never panics — a panic
+/// The TypeScript plugin *throws* for the last two (it does not validate
+/// the name); the Rust port returns them, exactly as the Go port does. The plugin itself never panics — a panic
 /// raised inside a user callback is contained by the engine and surfaces
 /// as a [`PluginError`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -320,6 +320,9 @@ fn parse_rule_list(rules: &str) -> BTreeMap<String, RuleMod> {
 #[derive(Clone)]
 pub struct DirectiveOptions {
     /// The directive name, used as the rule name and token-name suffix.
+    /// It must be non-empty and contain no whitespace — registration
+    /// rejects anything else, because the serialized grammar could not
+    /// name the token.
     pub name: String,
 
     /// The character sequence that starts the directive. It must be
@@ -480,6 +483,19 @@ fn install(parser: &mut Tabnas, options: &DirectiveOptions) -> Result<(), Direct
     let open = options.open.clone();
     let close = options.close_source().map(str::to_string);
     let (open_rules, close_rules) = options.resolved_rules();
+
+    // The name doubles as the rule name and the token-name suffix, and
+    // the serialized grammar below names that token in a whitespace-split
+    // `s` string, so a name holding whitespace would split into unrelated
+    // tokens and the open alt could never match; an empty name has the
+    // same fate. (TypeScript names tokens by resolved Tin and does not
+    // validate the name.) Reject it before anything is registered, rather
+    // than install a directive that silently never fires.
+    if name.is_empty() || name.chars().any(char::is_whitespace) {
+        return Err(DirectiveError(format!(
+            "Directive name must be non-empty and contain no whitespace: {name:?}"
+        )));
+    }
 
     // The OPEN token must be unique. (TypeScript throws here; the Rust
     // port returns the error, which `use_plugin` propagates.)
