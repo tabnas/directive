@@ -208,7 +208,7 @@ not using a sibling checkout.
 Directly:
 
 ```bash
-cd ts && npm install && npm test          # tsc --build src test, then node --test dist-test/*.test.js
+cd ts && npm install && npm test          # tsc --build src && tsc --build test, then node --test dist-test/*.test.js
 cd go && GOWORK=off go test ./...          # also runs the shared spec fixtures
 cd rs && cargo test --all-targets          # also runs the shared spec fixtures
 ```
