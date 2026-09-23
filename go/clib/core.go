@@ -25,7 +25,7 @@ import (
 	"unicode/utf8"
 
 	plug "github.com/tabnas/directive/go"
-	host "github.com/tabnas/jsonic/go"
+	host "github.com/tabnas/parser/go"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 	// the caller supplies one, so its argument is a serialized
 	// GrammarSpec. For every other row it is false and the argument
 	// stays reserved (see loadGrammar).
-	optsDefined = false
+	optsDefined = true
 )
 
 // One ready-to-parse engine for this format. Engines are not safe for
@@ -86,7 +86,7 @@ var _ = &sharedMu // referenced only by opt-in constructs
 // ignore it; a row that defines options must validate it here, since
 // nothing upstream does.
 func newParser(opts string) (parseFn, error) {
-	j := host.Make(); upper := func(r *host.Rule, _ *host.Context) { if s, ok := r.Child.Node.(string); ok { r.Node = strings.ToUpper(s) } else { r.Node = r.Child.Node } }; adder := func(r *host.Rule, _ *host.Context) { sum := 0.0; if l, ok := r.Child.Node.([]any); ok { for _, v := range l { if n, ok := v.(float64); ok { sum += n } } }; r.Node = sum }; if _, err := plug.Apply(j, plug.DirectiveOptions{Name: "upper", Open: "@", Action: upper}); err != nil { return nil, err }; if _, err := plug.Apply(j, plug.DirectiveOptions{Name: "adder", Open: "add<", Close: ">", Action: adder}); err != nil { return nil, err }; if _, err := j.Parse("true"); err != nil { return nil, err }; return j.Parse, nil
+	off := false; tn := host.Make(host.Options{Color: &host.ColorOptions{Active: &off}}); gs, err := host.GrammarSpecFromJSON([]byte(opts)); if err != nil { return nil, &host.TabnasError{Code: "grammar", Detail: "unreadable spec: " + err.Error()} }; if err := tn.Grammar(gs); err != nil { return nil, err }; start := tn.Config().RuleStart; if start == "" { start = "val" }; if tn.RSM()[start] == nil { return nil, &host.TabnasError{Code: "grammar", Detail: "spec installs no start rule " + start + ", so no input could be validated against it"} }; upper := func(r *host.Rule, _ *host.Context) { if s, ok := r.Child.Node.(string); ok { r.Node = strings.ToUpper(s) } else { r.Node = r.Child.Node } }; adder := func(r *host.Rule, _ *host.Context) { sum := 0.0; if l, ok := r.Child.Node.([]any); ok { for _, v := range l { if n, ok := v.(float64); ok { sum += n } } }; r.Node = sum }; if _, err := plug.Apply(tn, plug.DirectiveOptions{Name: "upper", Open: "@", Action: upper}); err != nil { return nil, err }; if _, err := plug.Apply(tn, plug.DirectiveOptions{Name: "adder", Open: "add<", Close: ">", Action: adder}); err != nil { return nil, err }; value, ok := host.BUILTIN_REFS["@value$"].(host.AltAction); if !ok { panic("directive: the engine has no @value$ builtin") }; tn.Rule("val", func(rs *host.RuleSpec, _ *host.Parser) { rs.AddAC(func(r *host.Rule, ctx *host.Context) { if host.IsUndefined(r.Node) { value(r, ctx) } }) }); return tn.Parse, nil
 }
 
 // reply marshals a result document. Marshalling cannot fail for the
