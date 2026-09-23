@@ -1,6 +1,6 @@
 # libtabnasdirective — the directive parser as a C ABI
 
-<!-- tabnas-clib-template: v3 — stamped by admin tasks/adopt-clib.sh;
+<!-- tabnas-clib-template: v4 — stamped by admin tasks/adopt-clib.sh;
      edit the template and re-stamp, not this file. -->
 
 The directive format parser as a C shared library, so languages with no
@@ -20,7 +20,7 @@ ZIG=/path/to/zig ./build.sh all
 
 | Function | Returns |
 |---|---|
-| `tabnas_version()` | `{"ok":true,"lib":"libtabnasdirective","format":"directive","template":"v3"}` |
+| `tabnas_version()` | `{"ok":true,"lib":"libtabnasdirective","format":"directive","template":"v4"}` |
 | `tabnas_grammar(opts, len)` | `{"ok":true,"handle":N}` — opts reserved, pass `(NULL, 0)`, unless the format notes below define them |
 | `tabnas_parse(handle, src, len)` | `{"ok":true,"accept":true[,"value":…]}` or `{"ok":true,"accept":false,"error":{…}}` |
 | `tabnas_grammar_free(handle)` | — |
@@ -66,7 +66,7 @@ const c = @cImport(@cInclude("tabnas.h"));
 
 ## Format notes
 
-directive is a plugin framework, not a format: its language exists only once concrete directives are chosen, and a directive action is a Go closure, which cannot cross this ABI. The library therefore fixes the host (the jsonic relaxed-JSON grammar, `jsonic.Make()`) and the two directives the shared conformance fixtures define: `upper` (open-only: `@v` yields the string value uppercased; a non-string value passes through, where the TS fixture stringifies it) and `adder` (open+close: `add<1, 2, 3>` yields the sum of a list body, 0 for a non-list body). `a: @x, b: add<1, 2, 3>` parses to `{"a":"X","b":6}` and an unclosed `add<1, 2` is rejected; bare jsonic rejects the first and accepts the second as text. The options argument stays reserved; selecting data-only directives (the plugin string-path action form) is its natural future use. As in libtabnasjsonic, `jsonic.Make()` swallows its grammar-install error, so handle creation ends with a canary parse.
+The library runs on the engine, not on another grammar: `tabnas_grammar`'s argument is DEFINED, as in libtabnasparser, and is a serialized GrammarSpec (the JSON `Tabnas.grammarSpec()` / `GrammarSpecFromJSON` exchange), which is installed first; the two directives the shared conformance fixtures define are then applied to it. A directive with a close token also inserts a `{s: close, b: 1}` close alternate into `val` (the rule it opens from), and that alternate carries no value action. A host that sets `val`'s node before close (jsonic, directive's own test grammar) is unaffected, but a GrammarSpec sets it in alternate actions (`@value$`), so a body closed by the inserted alternate would reach the directive with no value. The construct therefore gives exactly that inserted alternate the grammar's own `@value$` builtin (handle creation fails if it is not found), and changes nothing else in the caller's grammar. A value that contains itself, which a spec whose `val` alternates never reset the node can make the plugin build, is refused as `ok:false` (`internal`) rather than encoded. directive is a plugin framework, not a format: its language exists only once concrete directives are chosen, and a directive action is a Go closure, which cannot cross this ABI. The directives are `upper` (open-only: `@v` yields the string value uppercased; a non-string value passes through, where the TS fixture stringifies it) and `adder` (open+close: `add<[1, 2, 3]>` yields the sum of a list body, 0 for a non-list body). With the JSON sample spec, `{"a":@"x","b":add<[1,2,3]>}` parses to `{"a":"X","b":6}`, and an unclosed `add<[1,2]` is rejected.
 
 ## Layout
 
