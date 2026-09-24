@@ -171,6 +171,6 @@ DirectiveOptions::new("strict", "strict<")
 ## Where to go next
 
 - [How-to guides](guide.md). Focused recipes.
-- [Reference](reference.md). Every option, type and counter.
+- [Reference](reference.md). Every option, type, and counter.
 - [Concepts](concepts.md). The engine relationship, the design
   trade-offs, and the differences from the TypeScript version.

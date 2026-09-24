@@ -81,7 +81,7 @@ cargo test --all-targets
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-Or, from the repository root, `make test-rs` runs the tests and clippy.
+Or, from the repository root, `make test-rs` runs the tests and Clippy.
 
 The suite runs the shared `../test/spec/*.tsv` conformance fixtures
 (the same files the TypeScript and Go suites run) against the mini host

@@ -48,7 +48,7 @@ sweep, an install or a fetch, a release, a wait on CI, a benchmark, a
 script or loop you write, and anything sent to the background.
 
 - **Minimal is enough.** One line with the step and a count, such as
-  `conformance: 412/1500 (27%)`, meets it. When no total is known, print
+  `conformance: 412 of 1500 (27%)`, meets it. When no total is known, print
   what is known (the step, the current item, the elapsed time) and say the
   percentage is unknown rather than inventing one.
 - **Build it into what you write.** A script or loop prints a line per
@@ -383,9 +383,11 @@ The steps, in order:
    `-count=1` because shared fixtures live outside the Go module, so a
    changed corpus does not invalidate the test cache.
 
-   **Rust is not wired into `ci.yml`**, so step 4 will not cover it. Run
-   `make test-rs` (or `cd rs && cargo test`) here, or the version test in
-   `rs/tests/version_test.rs` never runs before the publish.
+   **Rust is not in `ci.yml`.** `.github/workflows/rust.yml` gates it,
+   and its path filter matches the bump's `ts/package.json` change, so it
+   runs on the bump PR and commit and step 4 covers it. Run
+   `make test-rs` (or `cd rs && cargo test`) here as well, so
+   `rs/tests/version_test.rs` has passed before you open the PR.
 3. **Merge the bump through a reviewed PR.** That is the house convention —
    `CONTRIBUTING.md` squash-merges PRs and takes the title as the commit
    message — and what `release.yml`'s own header describes. A direct push to
@@ -394,11 +396,12 @@ The steps, in order:
    immutably. If you take it, say so.
 4. **Wait for `main` CI to go green on the bump commit.** The release
    workflow **has no test step** — it reads `main`, builds against
-   already-published dependencies, publishes and tags. `ci.yml` on the bump
-   commit is the only gate there is. An npm version is immutable, and a Go
-   module tag is worse: proxy.golang.org caches module versions permanently,
-   so a `go/vX.Y.Z` naming the wrong commit cannot be moved, only
-   superseded.
+   already-published dependencies, publishes and tags. `ci.yml` and
+   `rust.yml` on the bump commit are the only gates there are (`rust.yml`
+   runs because its path filter matches the bump's `ts/package.json`
+   change). An npm version is immutable, and a Go module tag is worse:
+   proxy.golang.org caches module versions permanently, so a `go/vX.Y.Z`
+   naming the wrong commit cannot be moved, only superseded.
 5. **Record the release commit, then dispatch.** The confirmation
    below compares each tag against the commit you released, and a run
    that publishes and then fails to tag can be followed by `main`
@@ -631,22 +634,16 @@ handles releases. The Go module resolves its dependencies from the module
 proxy in CI exactly as it does locally — there is no `replace`, no
 vendored tree and no `go.work` involved on either side.
 
-**The Rust suite is not wired into CI yet, and the workflow that would
-do it is staged.** `ci.yml` calls the reusable polyglot workflow, which
-takes no Rust input, and session credentials cannot write
-`.github/workflows/*` anyway (admin DECISIONS.md ADR-8). So `rs/` is
-proved locally, and nothing checks it remotely.
-
-`ci/workflows/rust.yml` is the standalone gate, waiting for a maintainer
-to promote it — it needs no `run-rs` input and no change in
-`tabnas/.github`. Its commands live in `ci/rust/run.sh`, which you can
-run yourself and which is stricter than `make test-rs`: it adds
-`cargo fmt --check` and a build, and it clones nothing, so the
-sibling `../parser` checkout has to be there already.
-
-Until it is promoted, run `make test-rs` — or `ci/rust/run.sh` for what
-CI would say — before pushing a change that touches `rs/`,
-`ts/src/directive.ts`, `ts/package.json` or `test/spec/`.
+**The Rust suite runs in its own workflow.** `ci.yml` calls the
+reusable polyglot workflow, which takes no Rust input, so
+`.github/workflows/rust.yml` (live since 2026-09-22) is a standalone
+gate: it clones the sibling `tabnas/parser`, installs the MSRV toolchain
+and runs `ci/rust/run.sh`. You can run that script yourself; it is
+stricter than `make test-rs` (it adds `cargo fmt --check`, a build, the
+doctests and the lockfile check), and it clones nothing, so the sibling
+`../parser` checkout has to be there already. Run `make test-rs`, or
+`ci/rust/run.sh` for what CI will say, before pushing a change that
+touches `rs/`, `ts/src/directive.ts`, `ts/package.json` or `test/spec/`.
 
 ## Agent tooling
 

@@ -25,7 +25,7 @@ This repository contains:
 | [`test/spec/`](test/spec/) | Shared conformance fixtures, exercised by all three runtimes. |
 
 The TypeScript implementation is the source of truth; the Go and Rust
-ports mirror its behaviour, options, defaults and test specs. A small set
+ports mirror its behaviour, options, defaults, and test specs. A small set
 of intentional differences (static typing, engine-API limits) is
 tabulated in
 [`docs/reference.md`](docs/reference.md#typescript--go--rust-differences)

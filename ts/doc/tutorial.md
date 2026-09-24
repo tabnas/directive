@@ -166,6 +166,6 @@ directive together. See the [explanation](concepts.md) for why.
 - [How-to guides](guide.md). Focused recipes (shared close tokens,
   restricting where a directive matches, conditions, reading from
   options).
-- [Reference](reference.md). Every option, type, token and counter.
+- [Reference](reference.md). Every option, type, token, and counter.
 - [Concepts](concepts.md). How the plugin weaves into the engine's
   rule model, and the design trade-offs.
