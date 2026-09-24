@@ -6,13 +6,13 @@ a basic directive.
 
 The examples assume a parser `j` that already has a host grammar
 installed (`new Tabnas().use(hostGrammar)` in TS, `tabnas.Make()` +
-`j.Use(hostGrammar)` in Go — see the [Tutorial](tutorial.md)). The Go
+`j.Use(hostGrammar)` in Go; see the [Tutorial](tutorial.md)). The Go
 examples use two import aliases: `tabnas` (the engine, and the
 `Rule`/`Context`/`AltSpec`/… types, `github.com/tabnas/parser/go`) and
 `directive` (`github.com/tabnas/directive/go`).
 
 `directive.Apply` returns `(*tabnas.Tabnas, error)`; the Go examples
-below elide the error for brevity — check it in real code (the plugin
+below elide the error for brevity. Check it in real code (the plugin
 never panics).
 
 
@@ -66,7 +66,7 @@ directive.Apply(j, directive.DirectiveOptions{Name: "foo", Open: "foo<", Close: 
 directive.Apply(j, directive.DirectiveOptions{Name: "bar", Open: "bar<", Close: ">", Action: barAction})
 ```
 
-The open tokens (`foo<`, `bar<`) must still be unique — attempting to
+The open tokens (`foo<`, `bar<`) must still be unique: an attempt to
 reuse an open token throws (TypeScript) or returns an error from
 `Apply` / `j.Use` (Go; the plugin never panics).
 
@@ -134,9 +134,9 @@ Rules: &directive.RulesOption{
 
 ## How to read a value from parser options
 
-In TypeScript the `action` field also accepts a dotted-path string.
-The plugin looks up that path on the instance options every time the
-directive fires.
+The `action` field also accepts a dotted-path string. The plugin
+looks up that path on the instance options every time the directive
+fires.
 
 ```ts
 const j = new Tabnas().use(hostGrammar).use(Directive, {
@@ -149,17 +149,21 @@ j.options({ custom: { x: 42 } })
 j.parse('@x')   // → 42  (the action ignores the body and returns custom.x)
 ```
 
-Go's `Action` is a typed function, so it has no string form. Write a
-closure that captures the value instead:
+Go's `Action` takes the same string. The Go `Options` struct is
+closed, so the path resolves in the plugin-options namespace:
+`"custom.x"` reads `j.PluginOptions("custom")["x"]`.
 
 ```go
-x := 42
 directive.Apply(j, directive.DirectiveOptions{
-    Name: "constant",
-    Open: "@",
-    Action: func(r *tabnas.Rule, _ *tabnas.Context) { r.Node = x },
+    Name:   "constant",
+    Open:   "@",
+    Action: "custom.x",
 })
+j.SetPluginOptions("custom", map[string]any{"x": 42})
 ```
+
+A closure that captures the value works too, when the value does not
+come from the options.
 
 See [Reference, TypeScript / Go / Rust differences](reference.md#typescript--go--rust-differences).
 
@@ -221,7 +225,7 @@ Spec rows live in `test/spec/*.tsv`. Each row is one of:
 
 ```
 <input><TAB><expected-json>
-<input><TAB>!error <regex>
+<input><TAB>ERROR:<code>
 ```
 
 Blank lines and `#`-prefixed lines are ignored.
@@ -231,14 +235,15 @@ Run the existing specs:
 ```sh
 make test-ts      # TypeScript (canonical)
 make test-go      # Go (parity)
+make test-rs      # Rust (parity)
 ```
 
-Or directly: `cd ts && npm test`, `cd go && go test ./...`. Add a new
-case by appending a row to the relevant `.tsv` file; both test suites
-pick it up automatically.
+Or directly: `cd ts && npm test`, `cd go && go test ./...`,
+`cd rs && cargo test`. Add a new case by appending a row to the relevant
+`.tsv` file; all three test suites pick it up automatically.
 
 
-## How to disable the default rule wiring
+## How to turn off the default rule wiring
 
 Skip all default rule modifications. Only the directive rule itself is
 created; its open token will then only match via rules you install in

@@ -11,16 +11,16 @@ unusual with `custom`.
 
 There are three layers:
 
-- **tabnas** — the parser engine, and the plugin's only dependency. It
+- **tabnas**. The parser engine, and the plugin's only dependency. It
   ships *no* grammar: just a matcher-based lexer and a rule-based parser
   driven by grammar specs. The plugin's `Rule`, `Context`, `Tin`,
   `RuleSpec` and `AltSpec` types are tabnas types.
-- **a host grammar** — any grammar installed onto a tabnas instance that
+- **a host grammar**. Any grammar installed onto a tabnas instance that
   defines the usual `val` / `list` / `map` / `pair` / `elem` rules. The
   directive layers onto it. This repo's tests use a deliberately small
   one (`ts/test/mini-grammar.ts`, `go/mini_grammar_test.go`); a
   full relaxed-JSON grammar such as `jsonic` is another example.
-- **directive** — this plugin. It extends the host grammar's rules to
+- **directive**. This plugin. It extends the host grammar's rules to
   recognise directive tokens. It needs those rules to exist, which is why
   it operates on an instance with a grammar installed rather than a bare
   engine.
@@ -38,29 +38,29 @@ a call-out into custom logic. The plugin makes the parser:
 
 Two shapes are supported:
 
-- **Open-only** — the directive consumes a single value after the
+- **Open-only**. The directive consumes a single value after the
   open token. Example: `@foo` consumes `foo`.
-- **Open + close** — the directive consumes everything between the
+- **Open + close**. The directive consumes everything between the
   open and close tokens, including structured bodies. Example:
   `sum<1, 2, 3>`.
 
 
 ## The rule model
 
-The parser is rule-based. Every parse step sits inside some rule —
+The parser is rule-based. Every parse step sits inside some rule:
 `val`, `list`, `elem`, `map`, `pair`. Each rule has **alts**
 (alternatives): ordered lists of tokens / conditions that determine
 which branch to take when opening or closing the rule.
 
 The plugin weaves the directive into this model in three places:
 
-1. **Open-rules** — existing rules (default: `val`) get an extra
+1. **Open-rules**. Existing rules (default: `val`) get an extra
    open-alt that matches the directive's open token and *pushes*
    into a new rule named after the directive.
-2. **Close-rules** — existing rules (default: `list, elem, map,
+2. **Close-rules**. Existing rules (default: `list, elem, map,
    pair`) get an extra close-alt that matches the close token so
    they stop consuming siblings at the right place.
-3. **Directive rule** — a brand-new rule is created for the directive
+3. **Directive rule**. A brand-new rule is created for the directive
    itself, whose only job is to parse one value (`p: 'val'`),
    optionally look for the close token, and call the action.
 
@@ -74,8 +74,10 @@ close-alt only fires when the counter is `1`, so a stray `>` that
 doesn't have a matching open raises an "unexpected" error instead.
 
 The counter also scopes directive-close recognition to the current
-parse frame. When the directive rule resolves, the counter
-decrements, and outer rules see the close token as untagged again.
+parse frame. Counters pass from a rule to the rules it pushes and never
+back up, so the rules outside the directive do not carry the counter,
+and once the directive rule resolves they see the close token as
+untagged again.
 
 
 ## Implicit lists and maps
@@ -90,8 +92,8 @@ The plugin guards against this with two counters:
 
 | `close` present? | `dlist`, `dmap` set inside the directive |
 | ---------------- | ---------------------------------------- |
-| yes              | reset to 0 — implicits are allowed       |
-| no               | raised to 1 — implicits are suppressed   |
+| yes              | reset to 0, so implicits are allowed     |
+| no               | raised to 1, so implicits are suppressed |
 
 With a close token, implicits are safe because the close bounds the
 directive body. Without one, implicits are suppressed so the
@@ -112,18 +114,18 @@ The engine appends `'directive'` to every alt's group list. This makes
 it easy to:
 
 - Identify plugin-added alts when inspecting a rule spec.
-- Filter traces (e.g. via the `@tabnas/debug` plugin) to only
+- Filter traces (for example, via the `@tabnas/debug` plugin) to only
   directive-related events.
 - Write custom alts in a `custom` callback that interact predictably.
 
 
 ## Why shared close tokens reuse the existing fixed token
 
-Two directives with the same close character (e.g. both using `>`)
-must resolve to the same engine Tin so the lexer produces a single
-token type. If each directive registered its own `#CD_<NAME>`, the
-lexer's fixed-token table would only keep one mapping and the other
-directive would never see its close.
+Two directives with the same close character (for example, both
+using `>`) must resolve to the same engine Tin so the lexer produces a
+single token type. If each directive registered its own `#CD_<NAME>`, the
+fixed-token table in the lexer would only keep one mapping and the
+other directive would never see its close.
 
 The plugin therefore checks the fixed-token table before registering.
 If the token already exists it is reused; otherwise a fresh
@@ -137,7 +139,7 @@ in Go).
 The `custom` callback gives you the resolved `OPEN` / `CLOSE` Tins
 so you can install additional alts that match the directive's
 tokens without re-resolving them from names. Those Tins are only
-stable after the plugin has finished its own wiring — hence the
+stable after the plugin has finished its own wiring, which is why the
 callback fires last.
 
 
@@ -147,7 +149,7 @@ The plugin is not a fork or a modified engine. It is purely
 additive: it uses public engine APIs (`options`, `rule`, `grammar`,
 `fixed` / `Token`) to register tokens and extend rule specs. You can
 mix it freely with other plugins. The one interaction point to be
-aware of is the fixed-token table — any two plugins that want the
+aware of is the fixed-token table: any two plugins that want the
 same character sequence as their open token will collide.
 
 
@@ -163,6 +165,6 @@ same character sequence as their open token will collide.
   typing or the engine API are intentional and listed in
   [Reference, TypeScript / Go / Rust differences](reference.md#typescript--go--rust-differences).
 - **Fail loudly.** Re-registering an open token throws (TypeScript) or
-  returns an error (Go — the plugin never panics) rather than silently
+  returns an error (Go; the plugin never panics) rather than silently
   overwriting. A close token without its open produces a parse error,
   not a wrong parse.

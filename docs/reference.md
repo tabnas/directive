@@ -4,8 +4,8 @@ Complete API listing for the directive plugin. For an orientation on
 how to use these pieces, see the [Tutorial](tutorial.md) or the
 [How-to guides](how-to.md).
 
-There are three implementations — TypeScript (canonical), Go and Rust —
-and each has its own API section below.
+The TypeScript (canonical), Go, and Rust implementations each have
+their own API section below.
 
 The plugin's only dependency is the
 [tabnas](https://github.com/tabnas/parser) parser engine; its types
@@ -92,7 +92,7 @@ func Apply(j *tabnas.Tabnas, opts DirectiveOptions) (*tabnas.Tabnas, error)
 
 `Apply` registers the directive and returns any registration error (a
 duplicate open token, or a grammar build failure). The plugin never
-panics — callers always get an `error` to handle.
+panics, so callers always get an `error` to handle.
 
 ### `DirectiveOptions`
 
@@ -101,7 +101,7 @@ panics — callers always get an `error` to handle.
 | `Name`    | `string`                        | yes      | Directive name. Rule name and token-name suffix.                        |
 | `Open`    | `string`                        | yes      | Open character sequence. Must be unique per instance.                   |
 | `Close`   | `string`                        | no       | Close character sequence. Empty → directive consumes a single value.    |
-| `Action`  | `Action`                        | yes      | Callback invoked when the directive closes.                             |
+| `Action`  | `Action \| TokenAction \| string` | yes      | Callback invoked when the directive closes, or a dotted path resolved in the plugin-options namespace. |
 | `Rules`   | `*RulesOption`                  | no       | Rule modifications. `nil` → defaults. `&RulesOption{}` → no rules.      |
 | `Custom`  | `CustomFunc`                    | no       | Callback after setup. Argument: `DirectiveConfig{OPEN, CLOSE, Name}`.   |
 
@@ -203,7 +203,7 @@ pub fn set_node(rule: &mut Rule, value: Value);
 
 A rule pushed by the engine SHARES its parent's node cell, so writing
 through `rule.node.borrow_mut()` would overwrite the parent's node too.
-`set_node` installs a fresh cell — it is what `rule.node = …` means in
+`set_node` installs a fresh cell, which is what `rule.node = …` means in
 the canonical TypeScript engine. Borrow the cell directly only to mutate
 a container the rule genuinely shares (pushing onto an enclosing list,
 or merging into the map behind a `pair`).
@@ -239,9 +239,10 @@ pub struct DirectiveConfig {
 
 ### `DirectiveError`
 
-A registration failure — a duplicate open token, or a grammar the engine
-refused. Converts to and from `tabnas::PluginError`, so `apply` and
-`use_plugin` report the same thing.
+A registration failure: an unusable name (empty, or containing
+whitespace), a duplicate open token, or a grammar the engine refused.
+Converts to and from `tabnas::PluginError`, so `apply` and `use_plugin`
+report the same thing.
 
 
 ## Rules defaults
@@ -267,8 +268,8 @@ For a directive named `NAME` the plugin registers:
 | `#OD_<NAME>` | always                 | `open`            |
 | `#CD_<NAME>` | only if `close` set AND `close` isn't already a fixed token | `close` |
 
-When `close` collides with an existing fixed token (e.g. a shared
-close across directives) the existing token is reused and no new
+When `close` collides with an existing fixed token (for example, a
+shared close across directives) the existing token is reused and no new
 `#CD_<NAME>` token is created.
 
 
@@ -313,18 +314,18 @@ are permitted inside the directive body:
 
 TypeScript is canonical; the Go and Rust ports mirror its behaviour. All
 three pass the identical shared `test/spec/*.tsv` conformance fixtures.
-The following differences are intentional — they stem from static typing
+The following differences are intentional. They stem from static typing
 and from engine-API differences, not from drift:
 
 | Area | TypeScript | Go | Rust |
 | --- | --- | --- | --- |
-| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string array, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only — build the map explicitly. | `RulesOption` is a `BTreeMap<String, RuleMod>` per direction; `.open_rules("val,pair")` takes the comma string, `.open_rule(name, RuleMod::when(…))` adds a condition. |
+| **Rules shorthand** | `rules.open` / `rules.close` accept a comma string, a string array, or a record. | `Rules.Open` / `Rules.Close` are `map[string]*RuleMod` only, so build the map explicitly. | `RulesOption` is a `BTreeMap<String, RuleMod>` per direction; `.open_rules("val,pair")` takes the comma string, `.open_rule(name, RuleMod::when(…))` adds a condition. |
 | **Partial `rules` + defaults** | Plugin defaults merge into a partial `rules` (omitted direction keeps its default). | A non-`nil` `*RulesOption` is a complete override; `nil` uses defaults, `&RulesOption{}` uses none. | Same as Go: `rules: None` uses the defaults, `Some(RulesOption::new())` modifies no rules, and any `Some` is a complete override. |
 | **String-path action** | `action: 'a.b.c'` resolves a dotted path on the instance options at fire time. | Same, but the TS options object is open while the Go `Options` struct is closed, so the path resolves in the plugin-options namespace: `"custom.x"` reads `j.PluginOptions("custom")["x"]` at fire time. | Same as Go, for the same reason: `DirectiveAction::Path("custom.x")` reads `parser.plugin_options("custom")["x"]` from the parse's own resolved options at fire time. |
 | **Action return value** | An action may return a `Token`; an error token halts the parse. | Same via the `TokenAction` form (`func(r, ctx) any`); a returned `*tabnas.Token` with `Err` set halts the parse, other tokens are ignored. | Same via `with_token_action` (`Fn(&mut Rule, &mut Context) -> Result<Option<Token>, ActionError>`); a returned token carrying an error code halts the parse, other tokens are forwarded and otherwise ignored. An action may also fail directly with `Err(ActionError)`. |
 | **Registration failure** | The plugin `throw`s (propagated by `j.use`). | The plugin returns an `error` (propagated by `j.Use` / `Apply`) and never panics. | The plugin returns `Err(DirectiveError)` (propagated by `use_plugin` / `apply`) and never panics; a panic inside a user callback is contained by the engine and surfaces as a `PluginError`. |
 | **`bc` child node** | The closing child node is read directly. | The `bc` hook walks the `Prev`-linked replacement chain to adopt the final child node, working around Go slice reallocation when a `val` is replaced by an implicit list. Exercised by `test/spec/implicit.tsv`. | Read directly, as in TypeScript. The Rust engine hands a replaced rule the same `Rc<RefCell<Value>>` node cell, so no chain walk is needed; `test/spec/implicit.tsv` exercises it. |
-| **Assigning a node** | `rule.node = value`. | `rule.Node = value`. | A pushed or replaced rule SHARES its parent's node cell, so an assignment must install a fresh one: call `set_node(rule, value)` rather than writing through `rule.node.borrow_mut()`. Borrow the cell only to mutate a container the rule genuinely shares — pushing onto an enclosing list, say. |
+| **Assigning a node** | `rule.node = value`. | `rule.Node = value`. | A pushed or replaced rule SHARES its parent's node cell, so an assignment must install a fresh one: call `set_node(rule, value)` rather than writing through `rule.node.borrow_mut()`. Borrow the cell only to mutate a container the rule genuinely shares: pushing onto an enclosing list, say. |
 | **Rule-map ordering** | Object key order. | Go map iteration order (unordered). | `BTreeMap`, so a directive installs its host-rule modifications in a deterministic order. |
 
 
@@ -337,7 +338,9 @@ and from engine-API differences, not from drift:
 <input><TAB>ERROR:<code>
 ```
 
-Parsed by the TypeScript, Go and Rust test suites. The TypeScript and Go
+Parsed by the TypeScript, Go, and Rust test suites. The TypeScript and Go
 loaders come from `@tabnas/support`; Rust has no support crate, so its
-loader lives in `rs/tests/common/spec.rs` and must keep to the same
-codec — see [`test/AGENTS.md`](../test/AGENTS.md).
+loader lives in `rs/tests/common/spec.rs` and must read the files the
+same way: the same comment and blank-line skipping, the same `\n`,
+`\r`, `\t` and `\\` escapes in the input column, and the same `ERROR:`
+handling.
