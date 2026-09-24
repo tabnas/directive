@@ -618,7 +618,7 @@ resolved through the `node_modules/@tabnas/*` symlinks that
 
 ## CI
 
-`.github/workflows/ci.yml` is a thin **staged caller** (it replaced the
+`.github/workflows/ci.yml` is a thin **caller** (it replaced the
 old in-repo `build.yml`): it delegates to the org-standard reusable
 workflow `tabnas/.github/.github/workflows/polyglot-ci.yml@main`, passing
 `deps: "parser support debug json"` and
