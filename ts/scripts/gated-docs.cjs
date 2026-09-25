@@ -20,6 +20,15 @@ const PAGES = [
   "rs/doc/guide.md",
   "rs/doc/reference.md",
   "rs/doc/tutorial.md",
+  // The cross-language pages. README.md and rs/README.md send readers
+  // to docs/reference.md for the differences between the runtimes, so
+  // these are published like the rest. docs/STYLE-GUIDE.md stays out:
+  // it is the contributors' rulebook, and it quotes every banned phrase
+  // in order to ban it.
+  "docs/tutorial.md",
+  "docs/how-to.md",
+  "docs/reference.md",
+  "docs/explanation.md",
   "README.md",
   "ts/README.md",
   "go/README.md",
@@ -29,7 +38,8 @@ const PAGES = [
 const TUTORIALS = [
   "ts/doc/tutorial.md",
   "go/doc/tutorial.md",
-  "rs/doc/tutorial.md"
+  "rs/doc/tutorial.md",
+  "docs/tutorial.md"
 ]
 
 

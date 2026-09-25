@@ -6,8 +6,8 @@ a running program that parses `[@a, @b, 1]` and produces `['A', 'B', 1]`.
 
 A directive is a plugin for the
 [tabnas](https://github.com/tabnas/parser) parser engine. The engine
-ships no grammar of its own, so you bring a **host grammar** — any
-grammar that defines the usual `val` / `list` / `map` / `pair` rules —
+ships no grammar of its own, so you bring a **host grammar** (any
+grammar that defines the usual `val` / `list` / `map` / `pair` rules)
 and the directive layers onto it. In the snippets below `hostGrammar` is
 that grammar plugin; a complete, minimal one (scalars, `[a, b]` lists and
 `{k: v}` maps) lives in this repo at
@@ -15,7 +15,7 @@ that grammar plugin; a complete, minimal one (scalars, `[a, b]` lists and
 [`go/mini_grammar_test.go`](../go/mini_grammar_test.go).
 
 Choose your language and work through the steps in order. You do not
-need to understand every line — the [Explanation](explanation.md)
+need to understand every line. The [Explanation](explanation.md)
 covers the why.
 
 
@@ -75,7 +75,7 @@ wrap an arbitrary body. Replace the `.use(Directive, ...)` call with:
 Try it:
 
 ```ts
-console.log(j.parse('U<hello world>'))    // HELLO WORLD
+console.log(j.parse('U<[hello, world]>')) // HELLO,WORLD
 console.log(j.parse('[U<a>, U<b>, 1]'))   // [ 'A', 'B', 1 ]
 ```
 
@@ -158,7 +158,7 @@ directive.Apply(j, directive.DirectiveOptions{
 Try:
 
 ```go
-v, _ := j.Parse("U<hello world>")  // "HELLO WORLD"
+v, _ := j.Parse("U<[hello, world]>")  // "[HELLO WORLD]"
 ```
 
 You have now built a directive with both forms: open-only and open+close.
