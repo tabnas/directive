@@ -159,3 +159,5 @@ target/
 
 # Written by the counts script while measuring, removed after.
 .vale-counts.ini
+
+.DS_Store
