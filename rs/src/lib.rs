@@ -54,7 +54,7 @@ use tabnas::{
 /// orchestrator rewrites all of them, and `tests/version_test.rs` fails
 /// the build if they drift. Mirrors `VERSION` in `ts/src/directive.ts`
 /// and `const VERSION` in `go/directive.go`.
-pub const VERSION: &str = "0.5.8";
+pub const VERSION: &str = "0.5.9";
 
 /// The default host rules a directive modifies for its OPEN token.
 const DEFAULT_OPEN_RULES: &str = "val";
