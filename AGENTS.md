@@ -114,7 +114,7 @@ tagged packages); Go resolves it from the module proxy:
   do not `npm ci` or delete `node_modules`, which would break them.
   (`@tabnas/debug` and `@tabnas/railroad` are also `*` **devDependencies**
   — see below.) `engines.node` is `>=24`.
-- Rust: `rs/Cargo.toml` declares `tabnas = { path = "../../parser/rs" }`.
+- Rust: `rs/Cargo.toml` declares `tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`.
   The crate is not published to any registry, so there is no version to
   fall back on — the sibling checkout is required, and nothing needs
   building first (cargo compiles the engine from source). `rust-version`
