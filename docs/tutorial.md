@@ -23,9 +23,9 @@ covers the why.
 
 ### 1. Add the dependencies
 
-The directive plugin (`@tabnas/directive`) and the `tabnas` engine. See
-the [README](../README.md) for how the engine is wired from source
-during development.
+The directive plugin (`@tabnas/directive`) and the `tabnas` engine, both
+published on npm. See the [README](../README.md) for how the repository
+itself is built and tested during development.
 
 ```ts
 import { Tabnas } from '@tabnas/parser'

@@ -73,20 +73,21 @@ Per-language quickstarts live in [`ts/README.md`](ts/README.md),
 
 ## Build and test
 
-The only dependency is the `tabnas` parser engine, which is not published
-to a registry, so the implementations consume it from source, normally
-as a **sibling checkout** of `https://github.com/tabnas/parser` (built
-first with `cd parser/ts && npm install && npm run build`), which the Go
-module reaches through the `vendor/tabnas-parser` symlink and the Rust
-crate reaches through a `path` dependency on `../parser/rs`. The tests
-bring their own small grammar ([`ts/test/mini-grammar.ts`](ts/test/mini-grammar.ts),
+The only runtime dependency is the `tabnas` parser engine. The TypeScript
+package and the Go module install it from npm and the Go module proxy, so
+neither needs a checkout of it; the Rust crate reaches it through a `path`
+dependency on `../parser/rs`, so clone `https://github.com/tabnas/parser`
+beside this repository first. The tests bring their own small grammar
+([`ts/test/mini-grammar.ts`](ts/test/mini-grammar.ts),
 [`go/mini_grammar_test.go`](go/mini_grammar_test.go),
 [`rs/tests/common/mini_grammar.rs`](rs/tests/common/mini_grammar.rs)):
 just enough structure (scalars, explicit lists and maps) to exercise the
-plugin.
+plugin. The TypeScript doc examples run on `@tabnas/json`, which this
+package does not declare, so they also need a built sibling `json`
+checkout (`cd json/ts && npm install && npm run build`).
 
-The Makefile does **not** fetch; it assumes the engine is already in
-place:
+The Makefile does **not** fetch anything; it builds and tests the checkout
+as it stands:
 
 ```bash
 make build   # build all three implementations
@@ -95,10 +96,11 @@ make test    # test all three implementations
 
 Targeted: `make test-ts`, `make test-go`, `make test-rs`.
 
-If you cannot keep a sibling checkout, run `scripts/fetch-parser.sh`
-first; it downloads the engine's GitHub `main` branch over HTTPS into
-`vendor/` (git-ignored) and builds the TypeScript engine. Pin a different
-engine ref with `TABNAS_PARSER_REF`.
+`scripts/fetch-parser.sh` is optional: it downloads the engine's GitHub
+`main` branch over HTTPS into `vendor/` (git-ignored) and builds the
+TypeScript engine, but nothing in the build reads `vendor/`, so it cannot
+stand in for the Rust sibling checkout. Pin a different engine ref with
+`TABNAS_PARSER_REF`.
 
 Contributors and AI agents: see [`AGENTS.md`](AGENTS.md) for repository
 conventions and the parity rules.

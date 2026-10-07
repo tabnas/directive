@@ -2,11 +2,13 @@
 # Fetch and build the tabnas parser engine from its GitHub main branch.
 #
 # The directive is a plugin for the tabnas parser engine
-# (github.com/tabnas/parser — npm package `tabnas`, Go module
-# github.com/tabnas/parser/go), and that engine is its only dependency.
-# The engine is not published to a registry, so it is consumed from
-# source: this script downloads its main branch over HTTPS into ./vendor
-# (git-ignored) and builds the TypeScript engine so its dist/ is
+# (github.com/tabnas/parser), and that engine is its only dependency. The
+# engine is published, as @tabnas/parser on npm, as the Go module
+# github.com/tabnas/parser/go and as tabnas-parser on crates.io, and the
+# TypeScript and Go sides install it from there: nothing in the build
+# reads ./vendor any more (AGENTS.md). This script remains an optional
+# fetch of the engine's main branch: it downloads it over HTTPS into
+# ./vendor (git-ignored) and builds the TypeScript engine so its dist/ is
 # importable. The tests bring their own small grammar (see
 # ts/test/mini-grammar.ts and go/mini_grammar_test.go), so no grammar
 # package is fetched.

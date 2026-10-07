@@ -20,15 +20,12 @@ own test host (scalars, `[a, b]` lists, `{k: v}` maps) lives in
 
 ## 1. Install
 
-The `tabnas` crate is not published to a registry, so the engine is
-consumed as a **sibling checkout**. Clone
-`https://github.com/tabnas/parser` next to this repository and point at
-it:
+The engine is on crates.io as `tabnas-parser`, and the plugin as
+`tabnas-directive`. Code does not use the engine's package name: its
+library is named `tabnas`. Add both:
 
-```toml
-[dependencies]
-tabnas = { package = "tabnas-parser", path = "../parser/rs" }
-tabnas-directive = { path = "../directive/rs" }
+```bash
+cargo add tabnas-directive tabnas-parser
 ```
 
 You use two crates: the engine `tabnas` (for the `Rule` / `Context` /

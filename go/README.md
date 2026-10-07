@@ -62,17 +62,16 @@ func main() {
 
 ## Build and test
 
-This repository consumes the engine from source. From the repository
-root, fetch it first, then build and test:
+The module requires the published engine, and `github.com/tabnas/support/go`
+for the tests, from the Go module proxy, with no `replace`, so there is
+nothing to fetch first:
 
 ```bash
-TABNAS_SKIP_TS_BUILD=1 ./scripts/fetch-parser.sh  # Go-only: skips the TS build
 cd go && go build ./... && go vet ./... && go test ./...
 ```
 
-Or, from the repository root, `make test-go` does all of the above. The
-`go.mod` `replace` directive points the `github.com/tabnas/parser/go`
-requirement at the fetched copy in `../vendor/tabnas-parser/go`.
+Or, from the repository root, `make test-go` runs the tests above with
+`GOWORK=off`, against the versions `go.mod` requires.
 
 ## License
 

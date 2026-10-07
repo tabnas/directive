@@ -71,8 +71,8 @@ came from. The Rust runner is one test per file but names the same
 ## Rules
 
 - Prefer adding a fixture here over a one-off in-language assertion when a
-  case is expressible as input → output. That is what keeps the two runtimes
-  honest against each other.
+  case is expressible as input → output. That is what keeps the three
+  runtimes honest against each other.
 - TypeScript is canonical. If the runtimes disagree, the TS behaviour is
   the expected value — unless a port has exposed a genuine TS defect, or
   the difference is one of the intentional divergences the root

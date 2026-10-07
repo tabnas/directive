@@ -22,9 +22,9 @@ intentional TS / Go / Rust differences.
   or stops producing what the doc claims fails the build.
 - Crate `tabnas-directive`, library `tabnas_directive`. The engine crate
   `tabnas` is a **path dependency on the sibling checkout**
-  (`../../parser/rs`) — it is not published to a registry, so there is
-  no version to fall back on. Clone `https://github.com/tabnas/parser`
-  next to this repo.
+  (`../../parser/rs`). The engine is on crates.io as `tabnas-parser`, but
+  the committed manifest stays path-only, so there is no version to fall
+  back on. Clone `https://github.com/tabnas/parser` next to this repo.
 
 ```bash
 cargo build --all-targets
