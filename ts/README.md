@@ -48,10 +48,12 @@ A minimal host grammar (used by the tests) lives in
 
 ## Build and test
 
-The `tabnas` engine is the only dependency and is consumed from source.
-From the repository root, `make build` / `make test` fetch it into
-`vendor/` and build/test both implementations. The tests bring their own
-small grammar. See the [root README](../README.md) and
+The `tabnas` engine is the only dependency, and `npm install` installs the
+published release. From the repository root, `make build` / `make test`
+build and test all three implementations, and fetch nothing. The tests
+bring their own small grammar. The doc examples need a built sibling
+`json` checkout: `@tabnas/json` is required there and absent from
+`package.json`. See the [root README](../README.md) and
 [`../AGENTS.md`](../AGENTS.md).
 
 

@@ -1,8 +1,9 @@
 # Build, test and publish the TypeScript (ts/), Go (go/) and Rust (rs/)
 # implementations. ts/ is canonical; go/ and rs/ track it.
 #
-# Local build/test resolve the unpublished @tabnas siblings via the
-# repo-set go.work + node_modules symlinks (admin/scripts/link.sh).
+# TypeScript and Go build against the published @tabnas packages (npm, the
+# Go module proxy); admin/scripts/link.sh can point TypeScript at local
+# checkouts instead (node_modules symlinks).
 # This module is vendored (excluded from go.work), so Go uses GOWORK=off.
 # The Rust crate takes the engine as a path dependency on the sibling
 # checkout (../parser/rs), so clone tabnas/parser next to this repo.

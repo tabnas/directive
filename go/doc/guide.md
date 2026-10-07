@@ -207,7 +207,7 @@ Conformance rows live in `../test/spec/*.tsv`. Each row is one of:
 <input><TAB>!error <regex>
 ```
 
-Blank lines and `#`-prefixed lines are ignored. Both the Go and
-TypeScript suites load the same files, so a new row is exercised by both
-runtimes. Run with `go test ./...` (Go) and `npm test` (TS), or
-`make test` from the repo root.
+Blank lines and `#`-prefixed lines are ignored. The Go, TypeScript and
+Rust suites load the same files, so a new row is exercised by all three
+runtimes. Run with `go test ./...` (Go), `npm test` (TS) and `cargo test`
+in `rs/`, or `make test` from the repo root.

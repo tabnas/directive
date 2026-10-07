@@ -234,4 +234,4 @@ body:
 <input><TAB>!error <regex>
 ```
 
-Loaded by both the Go and TypeScript test suites.
+Loaded by the test suites of all three runtimes.

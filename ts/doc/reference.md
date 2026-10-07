@@ -218,4 +218,4 @@ are permitted inside the directive body:
 <input><TAB>!error <regex>
 ```
 
-Loaded by both the TypeScript and Go test suites.
+Loaded by the test suites of all three runtimes.

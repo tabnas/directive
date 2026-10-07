@@ -87,11 +87,11 @@ structure to exercise the plugin, with rule names (`val` / `list` / `map`
 |---|---|
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/directive` package. Plugin in `src/directive.ts`. Builds to `dist/` (+ `dist-test/`). Depends on `@tabnas/parser` (peer). |
 | [`go/`](go/) | Go port — `github.com/tabnas/directive/go`. Plugin in `directive.go`. Tracks `ts/`. Requires the published `github.com/tabnas/parser/go` and `github.com/tabnas/support/go` (no `replace`). |
-| [`rs/`](rs/) | Rust port — the `tabnas-directive` crate. Plugin in `src/lib.rs`. Tracks `ts/`. Takes the engine as a **path dependency on the sibling checkout** (`../../parser/rs`); the `tabnas` crate is not published. |
+| [`rs/`](rs/) | Rust port — the `tabnas-directive` crate. Plugin in `src/lib.rs`. Tracks `ts/`. Takes the engine as a **path dependency on the sibling checkout** (`../../parser/rs`); the engine is on crates.io as `tabnas-parser`, but the committed manifest stays path-only. |
 | [`test/spec/*.tsv`](test/spec/) | Shared conformance fixtures (`input → expected`), run by all three implementations. |
 | `ts/test/mini-grammar.ts`, `go/mini_grammar_test.go`, `rs/tests/common/mini_grammar.rs` | The small host grammar (`makeMini()` / `make_mini()`) the tests run against. Keep the three in step. |
 | [`docs/`](docs/) | Cross-language docs: `tutorial.md`, `how-to.md`, `reference.md`, `explanation.md`. |
-| `scripts/fetch-parser.sh`, `scripts/fetch-debug.sh` | Standalone fetch-from-source helpers (alternative to the sibling checkout; see below). |
+| `scripts/fetch-parser.sh`, `scripts/fetch-debug.sh` | Optional fetches of the engine's and debug's GitHub `main` into `vendor/`, which nothing in the build reads (see below). |
 | `vendor/` | Git-ignored, and **not created by anything in the normal flow** — the Go module requires the published parser/support modules with no `replace`. `scripts/fetch-parser.sh` still writes here; it is vestigial. |
 
 ## The tabnas engine dependency
@@ -103,20 +103,22 @@ written against its plugin API — it imports `Tabnas`, `Rule`, `RuleSpec`,
 `StateAction`, `Plugin`, `Context`, `Token`, `Tin` and registers tokens,
 rule modifications and a declarative grammar spec via the instance API.
 
-TypeScript and Rust consume the engine as a **sibling checkout** (the
-standard tabnas development model, until `tabnas/parser` publishes
-tagged packages); Go resolves it from the module proxy:
+TypeScript and Go install the published engine, from npm and the Go module
+proxy; only Rust takes it as a **sibling checkout**:
 
 - TypeScript: `"@tabnas/parser": ">=0"` is the **peerDependency**, mirrored
-  as `"@tabnas/parser": "*"` in `devDependencies` so local builds resolve
-  it. The `*` specifiers are satisfied by the `node_modules/@tabnas/*`
-  symlinks that `admin/scripts/link.sh` wires to the sibling checkouts —
-  do not `npm ci` or delete `node_modules`, which would break them.
+  as `"@tabnas/parser": "*"` in `devDependencies`, so `npm install`
+  installs the published engine. `admin/scripts/link.sh` can replace the
+  `node_modules/@tabnas/*` copies with symlinks to sibling checkouts, to
+  test against unreleased siblings; a later `npm install` or `npm ci` puts
+  the registry copies back.
   (`@tabnas/debug` and `@tabnas/railroad` are also `*` **devDependencies**
   — see below.) `engines.node` is `>=24`.
 - Rust: `rs/Cargo.toml` declares `tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`.
-  The crate is not published to any registry, so there is no version to
-  fall back on — the sibling checkout is required, and nothing needs
+  The engine is on crates.io as `tabnas-parser`, and `release.yml`'s
+  `crates` job publishes this crate, but the committed manifest stays
+  path-only, so there is no version to fall back on — the sibling
+  checkout is required, and nothing needs
   building first (cargo compiles the engine from source). `rust-version`
   is `1.85`.
 - Go: `go/go.mod` requires the **published** modules
@@ -127,18 +129,18 @@ tagged packages); Go resolves it from the module proxy:
   braces now (no `go.work` exists in the fleet) rather than a requirement
   of a vendor replace.
 
-Clone `https://github.com/tabnas/parser` as a sibling of this repo and
-build its TS (`cd parser/ts && npm install && npm run build`) before
-working here. CI clones the engine (and the other siblings) and builds
+Clone `https://github.com/tabnas/parser` as a sibling of this repo for
+the Rust side; it needs no build. The TypeScript doc examples also need a
+built sibling `json`, because `@tabnas/json` is not declared (see
+"Releasing"). CI clones the engine (and the other siblings) and builds
 them first.
 
-`scripts/fetch-parser.sh` is the **standalone** alternative for the
-TypeScript side: it downloads the engine's GitHub `main` branch over
-HTTPS into `vendor/` (pin a ref with `TABNAS_PARSER_REF`;
-`TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch). Use it only when you
-cannot keep a sibling checkout. **The Go module no longer consumes it** —
-there is no `replace` pointing at `vendor/`, so for Go this script is
-vestigial.
+`scripts/fetch-parser.sh` downloads the engine's GitHub `main` branch
+over HTTPS into `vendor/` (pin a ref with `TABNAS_PARSER_REF`;
+`TABNAS_SKIP_TS_BUILD=1` for a Go-only fetch). **Nothing consumes it any
+more**: `ts/package.json` has no `file:` dependency on `vendor/` and
+`go/go.mod` no `replace`, so the script is vestigial for both, and it
+cannot stand in for the Rust sibling checkout.
 
 ## Authority and alignment rules
 
@@ -224,9 +226,9 @@ make test    # test-ts (npm test) + test-go (GOWORK=off go test -v) + test-rs (c
 
 Targeted: `make build-ts` / `make test-ts`, `make build-go` /
 `make test-go`, `make build-rs` / `make test-rs`, `make clean`,
-`make reset`. The Makefile does **not** fetch — it assumes the sibling `../parser` (and the `vendor/tabnas-parser`
-symlink) is in place; run `scripts/fetch-parser.sh` first only if you are
-not using a sibling checkout.
+`make reset`. The Makefile does **not** fetch. Only the Rust targets need a
+checkout, the sibling `../parser`; the TypeScript and Go targets use the
+installed packages and modules.
 
 Directly:
 
@@ -357,11 +359,15 @@ The steps, in order:
    published one. Reinstalling is the part that matters.
 
    One thing a clean install does **not** isolate:
-   `ts/test/doc-examples.test.*` resolves `@tabnas/*` by filesystem path
-   (`const TABNAS = path.join(REPO, '..')`), not through `node_modules`. If
-   unbuilt sibling checkouts sit beside this repo, those blocks fail with
-   `MODULE_NOT_FOUND` no matter what you installed — build the siblings, or
-   verify somewhere they are absent.
+   `ts/test/doc-examples.test.*` resolves a doc example's `require`
+   through `node_modules` first, but a `@tabnas/*` package that is not
+   installed falls back to the sibling checkout `../<x>/ts`
+   (`const TABNAS = path.join(REPO, '..')`), and `@tabnas/directive`
+   itself to this repository's `ts/`. The tested examples require
+   `@tabnas/json`, which `ts/package.json` does not declare, so they run
+   against a sibling `json` checkout, not a published release, and fail
+   with `MODULE_NOT_FOUND` if that checkout is absent or unbuilt. CI's
+   `deps` includes `json`, so there the sibling is cloned and built.
 
    `npm test` already compiles here: `ts/package.json` sets `pretest` to
    `npm run build`, which npm runs automatically. No separate build step is
@@ -375,13 +381,17 @@ The steps, in order:
    ```bash
    (
      cd go
-     go mod edit -json | grep -q '"Replace": null' || { echo 'go.mod has a replace'; exit 1; }
+     go mod edit -json | jq -e '.Replace == null' >/dev/null || { echo 'go.mod has a replace'; exit 1; }
      GOWORK=off go test -count=1 ./...
    )
    ```
 
    `-count=1` because shared fixtures live outside the Go module, so a
-   changed corpus does not invalidate the test cache.
+   changed corpus does not invalidate the test cache. The check asks `jq`,
+   not `grep`: current Go leaves the `Replace` key out when there is no
+   replace, where older Go printed `"Replace": null`, and `jq` reads a
+   missing key as null, so the check passes on a clean `go.mod` and fails
+   on a replace either way.
 
    **Rust is not in `ci.yml`.** `.github/workflows/rust.yml` gates it,
    and its path filter matches the bump's `ts/package.json` change, so it
@@ -582,8 +592,8 @@ must treat every parsed body as hostile text.
 
 Neither is a runtime dependency — the directive's only dependency is the
 engine — but both are `"*"` **devDependencies** in `ts/package.json`,
-resolved through the `node_modules/@tabnas/*` symlinks that
-`admin/scripts/link.sh` points at the sibling checkouts:
+installed from npm (or, where `admin/scripts/link.sh` has run, symlinked
+to the sibling checkouts):
 
 - **`@tabnas/debug`** is the diagnostic tool for
   this plugin: `j.debug.describe()` dumps the grammar/alts and
@@ -592,9 +602,9 @@ resolved through the `node_modules/@tabnas/*` symlinks that
   …).use(Debug, …)` and asserts `model()` captures the directive's
   `<name>` rule and `#OD_<name>` open token, the host rules
   (`val`/`list`/`map`/`pair`/`elem`), and the plugin order
-  (`['mini','Directive','Debug']`). `scripts/fetch-debug.sh` vendors debug
-  for local use when you don't have a sibling checkout (run
-  `fetch-parser.sh` first).
+  (`['mini','Directive','Debug']`). `scripts/fetch-debug.sh` vendors debug's
+  GitHub `main` for local diagnostics (run `fetch-parser.sh` first); the
+  installed devDependency needs neither.
 - **`@tabnas/railroad`** is the railroad/syntax
   diagram generator, available as dev-only tooling for inspecting a host
   grammar with the directive applied. This repo ships no committed diagram
@@ -609,9 +619,9 @@ resolved through the `node_modules/@tabnas/*` symlinks that
   `go/directive.go`, commits, tags `go/vX.Y.Z`, pushes,
   and (if `gh` is present) cuts a GitHub release. `make tags-go` lists the
   Go tags newest-first.
-- Rust: **not published.** The crate depends on the engine by path, and
-  the `tabnas` engine crate is itself unpublished, so a registry release
-  is not possible until the engine ships one. There is no `publish-rs`
+- Rust: published to crates.io by `release.yml`'s `crates` job, from the
+  release tag, after `crates-release.yml` rewrites the engine's path into
+  a crates.io requirement. There is no `publish-rs`
   target — a version bump still has to update `rs/Cargo.toml` and
   `rs/src/lib.rs` together with the TS and Go constants, and
   `rs/tests/version_test.rs` fails the build if it does not.

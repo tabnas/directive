@@ -35,9 +35,10 @@ curl -fsSL --retry 4 --retry-delay 2 --max-time 120 \
   "https://codeload.github.com/$REPO/tar.gz/refs/heads/$REF" \
   | tar xz -C "$DEST" --strip-components=1
 
-# The debug plugin consumes the engine from source the same way this repo
-# does (TS: file:../vendor/tabnas-parser/ts; Go: replace => ../vendor/
-# tabnas-parser/go). Point those at the engine already vendored here.
+# Neither the debug plugin nor this repo consumes the engine from vendor/
+# any more: both install it from npm and the Go module proxy. The link
+# below still points debug's vendor/tabnas-parser at the engine vendored
+# here; a current debug checkout does not read it.
 mkdir -p "$DEST/vendor"
 ln -sfn ../../tabnas-parser "$DEST/vendor/tabnas-parser"
 

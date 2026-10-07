@@ -31,8 +31,9 @@ const expect = (actual: any) => ({
 //
 // The fixtures live at the repo root in `test/spec/*.tsv` and are read by
 // @tabnas/support, whose Go half `go/directive_test.go` uses to run the
-// SAME files — so the two implementations cannot drift without one going
-// red, and neither can the two loaders.
+// SAME files, as `rs/tests/directive_test.rs` does with its own loader — so
+// the three implementations cannot drift without one going red, and
+// neither can support's two loaders.
 //
 // A row is `<input>\t<expected-json>`, or `<input>\tERROR:<code>` for
 // input that must be rejected. These files have no header line and no

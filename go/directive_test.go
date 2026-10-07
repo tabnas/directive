@@ -17,9 +17,10 @@ import (
 //
 // The fixtures live at the repo root in `test/spec/*.tsv` and are read by
 // github.com/tabnas/support/go, whose TypeScript half
-// ts/test/directive.test.ts uses to run the SAME files — so the two
-// implementations cannot drift without one going red, and neither can the
-// two loaders.
+// ts/test/directive.test.ts uses to run the SAME files, as
+// rs/tests/directive_test.rs does with its own loader — so the three
+// implementations cannot drift without one going red, and neither can
+// support's two loaders.
 //
 // A row is <input>\t<expected-json>, or <input>\tERROR:<code> for input
 // that must be rejected. These files have no header line and no opts
